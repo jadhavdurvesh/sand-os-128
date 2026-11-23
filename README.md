@@ -106,6 +106,10 @@ python -m veylith boot examples/factorial.s --ram 1048576 --max-steps 5000000 --
 python -W error -m unittest discover -s tests -v
 ```
 
+## Runtime parameters and machine configuration
+
+The emulator exposes its machine profile with `python -m veylith info`. The runtime prints the selected profile to the GitHub Actions log before booting. See [the GitHub Actions runtime guide](docs/15-github-actions-runtime.md) for parameter meanings, constraints, defaults, and examples.
+
 ## GitHub Actions
 
 The **Veylith CI** workflow runs the conformance suite on Python 3.11, 3.12, and 3.13, checks that the machine-readable opcode table matches the implementation, and boots a user program under Kernelloom.
