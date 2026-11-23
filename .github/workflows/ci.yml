@@ -1,15 +1,144 @@
-name: ci
+name: Veylith CI
+
 on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
+    inputs:
+      scenario:
+        description: "User program to boot under Kernelloom"
+        required: true
+        default: "hello"
+        type: choice
+        options:
+          - hello
+          - factorial
+          - badptr
+      python_version:
+        description: "Python version for the interactive runtime job"
+        required: true
+        default: "3.12"
+        type: choice
+        options:
+          - "3.11"
+          - "3.12"
+          - "3.13"
+      ram_bytes:
+        description: "Emulated RAM in bytes (positive multiple of 8; default 1048576)"
+        required: true
+        default: "1048576"
+        type: string
+      max_steps:
+        description: "Maximum retired/executed glyph steps (default 5000000)"
+        required: true
+        default: "5000000"
+        type: string
+      trace:
+        description: "Generate and upload a Tracebook JSONL execution trace"
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
 jobs:
-  test:
+  conformance:
+    name: Conformance tests (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
-      - run: python3 -W error -m unittest discover -s tests
-      - run: python3 -m veylith boot | grep -q 295232799039604140847618609643520000000
+          python-version: ${{ matrix.python-version }}
+      - name: Print conformance environment
+        run: |
+          python --version
+          python -c "from veylith import isa; print('Architecture: SAND-128 / Veylith v0'); print(f'Registers: {isa.NUM_VEYLS} x {isa.WIDTH}-bit'); print(f'Glyph width: {isa.GLYPH_BYTES * 8} bits'); print(f'Virtual address width: {isa.VA_BITS} bits')"
+      - name: Run unit and integration tests
+        run: python -W error -m unittest discover -s tests -v
+      - name: Verify opcode table is reproducible
+        run: python -m veylith opcodes > /tmp/veylith-opcodes.json && diff -u architecture/veylith-v0-glyphs.json /tmp/veylith-opcodes.json
+
+  runtime:
+    name: Kernelloom runtime demonstration
+    needs: conformance
+    runs-on: ubuntu-latest
+    env:
+      PYTHON_VERSION: ${{ inputs.python_version || '3.12' }}
+      RAM_BYTES: ${{ inputs.ram_bytes || '1048576' }}
+      MAX_STEPS: ${{ inputs.max_steps || '5000000' }}
+      SCENARIO: ${{ inputs.scenario || 'hello' }}
+      TRACE_ENABLED: ${{ inputs.trace || 'false' }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ inputs.python_version || '3.12' }}
+      - name: Validate runtime parameters
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$RAM_BYTES" =~ ^[0-9]+$ ]]
+          [[ "$MAX_STEPS" =~ ^[0-9]+$ ]]
+          (( RAM_BYTES > 0 && RAM_BYTES % 8 == 0 ))
+          (( MAX_STEPS > 0 ))
+          echo "Selected Python: $PYTHON_VERSION"
+          echo "Scenario: $SCENARIO"
+          echo "RAM bytes: $RAM_BYTES"
+          echo "Maximum steps: $MAX_STEPS"
+          echo "Tracebook: $TRACE_ENABLED"
+          python --version
+      - name: Print full architectural and machine parameters
+        run: python -m veylith info --ram "$RAM_BYTES" --max-steps "$MAX_STEPS"
+      - name: Boot selected user program
+        shell: bash
+        run: |
+          set -euo pipefail
+          TRACE_ARGS=()
+          if [[ "$TRACE_ENABLED" == "true" ]]; then
+            TRACE_ARGS=(--trace tracebook.jsonl)
+          fi
+          case "$SCENARIO" in
+            hello)
+              python -m veylith boot examples/hello.s --ram "$RAM_BYTES" --max-steps "$MAX_STEPS" "${TRACE_ARGS[@]}" 2>&1 | tee runtime.log
+              grep -F "Hello from Veylith v0!" runtime.log
+              grep -F "exit code 0" runtime.log
+              ;;
+            factorial)
+              python -m veylith boot examples/factorial.s --ram "$RAM_BYTES" --max-steps "$MAX_STEPS" "${TRACE_ARGS[@]}" 2>&1 | tee runtime.log
+              grep -F "295232799039604140847618609643520000000" runtime.log
+              grep -F "exit code 0" runtime.log
+              ;;
+            badptr)
+              set +e
+              python -m veylith boot examples/badptr.s --ram "$RAM_BYTES" --max-steps "$MAX_STEPS" "${TRACE_ARGS[@]}" 2>&1 | tee runtime.log
+              STATUS=${PIPESTATUS[0]}
+              set -e
+              [[ "$STATUS" -eq 1 ]]
+              grep -F "user fault cause=5 tval=256" runtime.log
+              grep -F "exit code 133" runtime.log
+              ;;
+            *)
+              echo "Unknown scenario: $SCENARIO" >&2
+              exit 2
+              ;;
+          esac
+      - name: Upload Tracebook and runtime log
+        if: always() && github.event_name == 'workflow_dispatch' && inputs.trace
+        uses: actions/upload-artifact@v4
+        with:
+          name: veylith-tracebook-${{ github.run_number }}
+          path: |
+            tracebook.jsonl
+            runtime.log
+          if-no-files-found: warn
