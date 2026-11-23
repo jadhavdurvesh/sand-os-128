@@ -5,7 +5,7 @@
 _start:
     li   v1, 1
     la   v2, message
-    li   v3, 31
+    li   v3, 34
     sys  0
 
     li   v1, 2
@@ -13,4 +13,4 @@ _start:
     sys  0
 
 message:
-    .ascii "Hello from Veylith 128-Native!\n"
+    .ascii "Hello from Veylith 128-Native v1!\n"

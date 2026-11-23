@@ -1,14 +1,14 @@
 {
   "architecture": "Veylith",
-  "profile": "v0",
-  "glyph_bits": 64,
+  "profile": "128-native-v1",
+  "glyph_bits": 128,
   "fields": {
-    "op": "63:56",
-    "rd": "55:51",
-    "ra": "50:46",
-    "rb": "45:41",
-    "reserved": "40:32 (must be 0)",
-    "imm": "31:0"
+    "op": "127:112",
+    "rd": "111:105",
+    "ra": "104:98",
+    "rb": "97:91",
+    "reserved": "90:88 (must be 0)",
+    "imm": "87:0 (88-bit immediate)"
   },
   "glyphs": [
     {
@@ -21,7 +21,7 @@
       "name": "halt",
       "opcode": "0x01",
       "format": "none",
-      "summary": "stop the machine (kernel only); exit code = low 64 bits of v1"
+      "summary": "stop the machine (kernel only); exit code = v1"
     },
     {
       "name": "add",
@@ -189,7 +189,7 @@
       "name": "shk",
       "opcode": "0x31",
       "format": "ri",
-      "summary": "rd = (rd << 32) | zext(imm)"
+      "summary": "rd = ((rd & ((1 << 40) - 1)) << 88) | zext(imm[87:0])"
     },
     {
       "name": "clz",
@@ -291,25 +291,25 @@
       "name": "jmp",
       "opcode": "0x60",
       "format": "j",
-      "summary": "pc = pc + 8 * sext(imm)"
+      "summary": "pc = pc + 16 * sext(imm)"
     },
     {
       "name": "jal",
       "opcode": "0x61",
       "format": "jal",
-      "summary": "rd = pc + 8; pc = pc + 8 * sext(imm)"
+      "summary": "rd = pc + 16; pc = pc + 16 * sext(imm)"
     },
     {
       "name": "jr",
       "opcode": "0x62",
       "format": "jr",
-      "summary": "t = ra + sext(imm); rd = pc + 8; pc = t"
+      "summary": "t = ra + sext(imm); rd = pc + 16; pc = t"
     },
     {
       "name": "beq",
       "opcode": "0x63",
       "format": "br",
-      "summary": "if ra == rb: pc = pc + 8 * sext(imm)"
+      "summary": "if ra == rb: pc = pc + 16 * sext(imm)"
     },
     {
       "name": "bne",
@@ -345,7 +345,7 @@
       "name": "sys",
       "opcode": "0x70",
       "format": "j",
-      "summary": "trap SYSCALL; tval = imm; tpc = pc + 8"
+      "summary": "trap SYSCALL; tval = imm; tpc = pc + 16"
     },
     {
       "name": "tret",
@@ -385,5 +385,8 @@
     "4": "MISALIGN",
     "5": "ACCESS",
     "6": "SYSCALL"
-  }
+  },
+  "register_width_bits": 128,
+  "register_count": 128,
+  "virtual_address_bits": 128
 }
