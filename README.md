@@ -39,6 +39,8 @@ The initial architecture is intentionally not frozen. The documents in [docs/](d
 | [Toolchain and ABI](docs/10-toolchain-and-abi.md) | Assembler, compiler, object format, and calling convention |
 | [Roadmap](docs/11-roadmap.md) | Research milestones and exit criteria |
 | [Decision register](docs/12-decision-register.md) | Open decisions and accepted design records |
+| [Originality and naming policy](docs/13-originality-and-naming-policy.md) | Rules for custom design and project terminology |
+| [Decision-record template](docs/templates/decision-record-template.md) | Reusable format for future architecture decisions |
 
 ## Repository layout
 
@@ -80,7 +82,7 @@ Before implementing a subsystem:
 4. Add examples and conformance tests.
 5. Mark the decision as proposed, accepted, implemented, or verified.
 
-See [the decision register](docs/12-decision-register.md) for the current design questions.
+See [the decision register](docs/12-decision-register.md) for the current design questions and [CONTRIBUTING.md](CONTRIBUTING.md) for the design workflow.
 
 ## License
 
