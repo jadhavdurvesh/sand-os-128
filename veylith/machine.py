@@ -6,6 +6,9 @@ from . import image as imagemod
 CONSOLE_ADDR = (1 << 128) - 0x10000
 VA_LIMIT = 1 << isa.VA_BITS
 TRACE_VERSION = 2
+GPU_BASE = (1 << 128) - 0x2000
+GPU_WIDTH, GPU_HEIGHT = 1280, 720
+GPU_REG_BYTES = 96
 
 
 class Trap(Exception):
@@ -34,6 +37,8 @@ class Machine:
         self.cycles = 0
         self.trace = None
         self._mem_log = []
+        self.framebuffer = bytearray(GPU_WIDTH * GPU_HEIGHT * 4)
+        self._gpu_regs = [0] * 6
 
     # ---- image loading ----------------------------------------------------
     def load(self, blob, set_entry=True):
@@ -49,6 +54,10 @@ class Machine:
     # ---- memory -----------------------------------------------------------
     def _check(self, addr, size, kind):
         """kind: 'r', 'w' or 'x'. Raises Trap. Priority: ACCESS(canonical) > MISALIGN > ACCESS(region)."""
+        if GPU_BASE <= addr < GPU_BASE + GPU_REG_BYTES:
+            if self.priv != 0 or kind != 'w' or size != 16 or (addr - GPU_BASE) % 16:
+                raise Trap(CAUSE_ACCESS, addr)
+            return 'gpu'
         if not 0 <= addr < VA_LIMIT:
             raise Trap(CAUSE_ACCESS, addr)
         if addr % size:
@@ -78,9 +87,30 @@ class Machine:
         value &= (1 << (size * 8)) - 1
         if region == "console":
             self.console.append(value)
+        elif region == "gpu":
+            self._gpu_write(addr, value)
         else:
             self.ram[addr:addr + size] = value.to_bytes(size, "little")
         self._mem_log.append((addr, size, value))
+
+
+    def _gpu_write(self, addr, value):
+        index = (addr - GPU_BASE) // 16
+        if index < 5:
+            self._gpu_regs[index] = value
+            return
+        self._gpu_regs[5] = value
+        if value != 1:
+            return
+        x, y, width, height, color = self._gpu_regs[:5]
+        if x >= GPU_WIDTH or y >= GPU_HEIGHT:
+            return
+        width, height = min(width, GPU_WIDTH - x), min(height, GPU_HEIGHT - y)
+        rgba = int(color & 0xFFFFFFFF).to_bytes(4, "little")
+        row = rgba * width
+        for yy in range(y, y + height):
+            start = (yy * GPU_WIDTH + x) * 4
+            self.framebuffer[start:start + len(row)] = row
 
     # ---- execution --------------------------------------------------------
     def _write(self, rd, value):

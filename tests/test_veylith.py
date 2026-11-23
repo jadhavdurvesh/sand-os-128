@@ -1,6 +1,6 @@
 import json,os,unittest
 from veylith import asm,image,isa,disk
-from veylith.machine import Machine,CONSOLE_ADDR
+from veylith.machine import Machine,CONSOLE_ADDR,GPU_WIDTH,GPU_HEIGHT
 MAX=(1<<128)-1;MIN=1<<127
 def read(p):
     with open(p,encoding="utf-8") as f:return f.read()
@@ -73,6 +73,8 @@ class Kernelloom(unittest.TestCase):
         m=Machine(1<<20);m.load(asm.assemble(read("kernel/kernelloom.s")));m.load(asm.assemble(read(example)),set_entry=False);m.run(5_000_000);return m
     def test_process_info_syscalls(self):
         m=self.boot("examples/process_info.s");o=m.console.decode();self.assertIn("PID syscall: OK",o);self.assertIn("Cycle counter syscall: OK",o);self.assertEqual((m.stop_reason,m.exit_code),("halt",0))
+    def test_desktop_framebuffer(self):
+        m=self.boot("examples/hello.s");self.assertEqual((GPU_WIDTH,GPU_HEIGHT),(1280,720));self.assertEqual(len(m.framebuffer),1280*720*4);self.assertNotEqual(m.framebuffer[:4],b"\\0\\0\\0\\0");self.assertEqual(m.stop_reason,"halt")
     def test_hello(self):
         m=self.boot("examples/hello.s");self.assertIn("Hello from Veylith 128-Native v1!",m.console.decode());self.assertEqual((m.stop_reason,m.exit_code),("halt",0))
     def test_native128_example(self):

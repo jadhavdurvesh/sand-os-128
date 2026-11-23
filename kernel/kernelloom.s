@@ -13,6 +13,7 @@
 .equ USER_SIZE, 0x10000
 .equ FRAME,     0x6000
 .equ DIGITS,    0x7F00          ; 40-byte scratch for decimal conversion (end of buffer)
+.equ GPU,       0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFE000
 
 .org 0
 _start:
@@ -21,6 +22,7 @@ _start:
     li   v127, USER_BASE + USER_SIZE
     la   v1, banner
     call puts
+    call desktop_init
     li   v1, USER_BASE
     csrw abase, v1
     csrw tpc, v1
@@ -29,6 +31,83 @@ _start:
     li   v1, 1
     csrw tpriv, v1
     tret
+
+
+; SAND Desktop 128 initial guest-rendered framebuffer scene, 1280x720.
+; gpu_rect: v1=x, v2=y, v3=width, v4=height, v5=RGBA word.
+desktop_init:
+    li v1, 0
+    li v2, 0
+    li v3, 1280
+    li v4, 720
+    li v5, 0xFF291B11
+    call gpu_rect
+    li v1, 0
+    li v2, 0
+    li v3, 1280
+    li v4, 42
+    li v5, 0xFF362517
+    call gpu_rect
+    li v1, 0
+    li v2, 652
+    li v3, 1280
+    li v4, 68
+    li v5, 0xFF4D3624
+    call gpu_rect
+    li v1, 24
+    li v2, 76
+    li v3, 244
+    li v4, 548
+    li v5, 0xFF3A2B20
+    call gpu_rect
+    li v1, 292
+    li v2, 76
+    li v3, 964
+    li v4, 548
+    li v5, 0xFF34271D
+    call gpu_rect
+    li v1, 292
+    li v2, 76
+    li v3, 964
+    li v4, 44
+    li v5, 0xFF594333
+    call gpu_rect
+    li v1, 316
+    li v2, 148
+    li v3, 916
+    li v4, 448
+    li v5, 0xFF403126
+    call gpu_rect
+    li v1, 340
+    li v2, 172
+    li v3, 868
+    li v4, 72
+    li v5, 0xFF594333
+    call gpu_rect
+    li v1, 340
+    li v2, 270
+    li v3, 260
+    li v4, 190
+    li v5, 0xFF604B39
+    call gpu_rect
+    li v1, 620
+    li v2, 270
+    li v3, 588
+    li v4, 190
+    li v5, 0xFF49382B
+    call gpu_rect
+    ret
+
+gpu_rect:
+    li v6, GPU
+    sq [v6 + 0], v1
+    sq [v6 + 16], v2
+    sq [v6 + 32], v3
+    sq [v6 + 48], v4
+    sq [v6 + 64], v5
+    li v7, 1
+    sq [v6 + 80], v7
+    ret
 
 trap_entry:
     sq   [v0 + FRAME + 16], v1

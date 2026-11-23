@@ -13,15 +13,24 @@ typedef unsigned __int128 u128; typedef __int128 s128;
 enum { ILLEGAL=1, PRIVILEGE=2, DIVZERO=3, MISALIGN=4, ACCESS=5, SYSCALL=6 };
 enum { PRIV=0, TVEC=1, TPC=2, TCAUSE=3, TVAL=4, TPRIV=5, ABASE=6, ALIM=7, CYCLES=8, SCRATCH=9 };
 typedef struct {u128 v[129],pc,csr[10];unsigned priv;unsigned char*ram;int halted,exit_code;uint64_t cycles;} Machine;
+#define GPU_BASE ((u128)-1-(u128)0x1fff)
+#define GPU_WIDTH 1280u
+#define GPU_HEIGHT 720u
+#define GPU_PIXELS (GPU_WIDTH*GPU_HEIGHT)
+static uint32_t *veylith_fb;
+static u128 gpu_regs[6];
+uint32_t *veylith_framebuffer_ptr(void){return veylith_fb;}
+uint32_t veylith_framebuffer_size(void){return GPU_PIXELS;}
 static const char*cause_name[]={"","ILLEGAL","PRIVILEGE","DIVZERO","MISALIGN","ACCESS","SYSCALL"};
 static uint32_t le32(const unsigned char*p){return (uint32_t)p[0]|((uint32_t)p[1]<<8)|((uint32_t)p[2]<<16)|((uint32_t)p[3]<<24);}
 static uint64_t le64(const unsigned char*p){uint64_t x=0;for(int i=7;i>=0;i--)x=(x<<8)|p[i];return x;}
 static u128 le128(const unsigned char*p){u128 x=0;for(int i=15;i>=0;i--)x=(x<<8)|p[i];return x;}
 static u128 sext(u128 x,unsigned n){u128 m=(((u128)1)<<n)-1;x&=m;return (x&(((u128)1)<<(n-1)))?(x|~m):x;}
 static void fault(Machine*m,unsigned c,u128 val,u128 pc){if(!m->csr[TVEC]){fprintf(stderr,"\n[Machine] unhandled %s at PC 0x%016" PRIx64 "\n",cause_name[c],(uint64_t)pc);m->halted=1;m->exit_code=128+(int)c;return;}m->csr[TPC]=pc;m->csr[TCAUSE]=c;m->csr[TVAL]=val;m->csr[TPRIV]=m->priv;m->priv=0;m->pc=m->csr[TVEC];}
-static int memcheck(Machine*m,u128 a,unsigned n,int wr){if(a%n)return MISALIGN;u128 end=a+n;if(end<a)return ACCESS;if(m->priv){if(a<m->csr[ABASE]||end>m->csr[ABASE]+m->csr[ALIM]||end>RAM_SIZE)return ACCESS;return 0;}if(end<=RAM_SIZE)return 0;if(wr&&a==CONSOLE_ADDR&&n==1)return 0;return ACCESS;}
+static int memcheck(Machine*m,u128 a,unsigned n,int wr){if(a>=GPU_BASE&&a<GPU_BASE+96){if(m->priv||!wr||n!=16||((a-GPU_BASE)%16))return ACCESS;return 0;}if(a%n)return MISALIGN;u128 end=a+n;if(end<a)return ACCESS;if(m->priv){if(a<m->csr[ABASE]||end>m->csr[ABASE]+m->csr[ALIM]||end>RAM_SIZE)return ACCESS;return 0;}if(end<=RAM_SIZE)return 0;if(wr&&a==CONSOLE_ADDR&&n==1)return 0;return ACCESS;}
 static u128 loadn(Machine*m,u128 a,unsigned n,int*err){*err=memcheck(m,a,n,0);if(*err)return 0;u128 x=0;for(unsigned i=0;i<n;i++)x|=(u128)m->ram[(size_t)a+i]<<(8*i);return x;}
-static int storen(Machine*m,u128 a,unsigned n,u128 x){int e=memcheck(m,a,n,1);if(e)return e;if(a==CONSOLE_ADDR&&n==1){putchar((unsigned char)x);fflush(stdout);return 0;}for(unsigned i=0;i<n;i++)m->ram[(size_t)a+i]=(unsigned char)(x>>(8*i));return 0;}
+static void gpu_write(Machine*m,u128 a,u128 x){unsigned r=(unsigned)((a-GPU_BASE)/16);if(r<5){gpu_regs[r]=x;return;}gpu_regs[5]=x;if(x!=1||!veylith_fb)return;uint64_t px=(uint64_t)gpu_regs[0],py=(uint64_t)gpu_regs[1],w=(uint64_t)gpu_regs[2],h=(uint64_t)gpu_regs[3];uint32_t color=(uint32_t)gpu_regs[4];if(px>=GPU_WIDTH||py>=GPU_HEIGHT)return;if(w>GPU_WIDTH-px)w=GPU_WIDTH-px;if(h>GPU_HEIGHT-py)h=GPU_HEIGHT-py;for(uint64_t yy=py;yy<py+h;yy++)for(uint64_t xx=px;xx<px+w;xx++)veylith_fb[yy*GPU_WIDTH+xx]=color;}
+static int storen(Machine*m,u128 a,unsigned n,u128 x){int e=memcheck(m,a,n,1);if(e)return e;if(a>=GPU_BASE&&a<GPU_BASE+96){gpu_write(m,a,x);return 0;}if(a==CONSOLE_ADDR&&n==1){putchar((unsigned char)x);fflush(stdout);return 0;}for(unsigned i=0;i<n;i++)m->ram[(size_t)a+i]=(unsigned char)(x>>(8*i));return 0;}
 static u128 mulhi(u128 a,u128 b){u128 mask=((u128)1<<64)-1,a0=a&mask,a1=a>>64,b0=b&mask,b1=b>>64,p00=a0*b0,p01=a0*b1,p10=a1*b0,p11=a1*b1,mid=(p00>>64)+(uint64_t)p01+(uint64_t)p10;return p11+(p01>>64)+(p10>>64)+(mid>>64);}
 static unsigned clz128(u128 x){if(!x)return 128;uint64_t hi=(uint64_t)(x>>64);return hi?(unsigned)__builtin_clzll(hi):64u+(unsigned)__builtin_clzll((uint64_t)x);}
 static unsigned pop128(u128 x){return (unsigned)__builtin_popcountll((uint64_t)x)+(unsigned)__builtin_popcountll((uint64_t)(x>>64));}
@@ -58,7 +67,7 @@ if(wr&&d)m->v[d]=z;m->v[0]=0;m->pc=npc;m->cycles++;
 }
 static uint64_t hash64(const unsigned char*p,size_t n){uint64_t h=14695981039346656037ULL;for(size_t i=0;i<n;i++){h^=p[i];h*=1099511628211ULL;}return h;}
 static int boot(const unsigned char*d,size_t size){if(size<512||memcmp(d,"SAND128D",8))return 2;if(le32(d+8)!=1||le32(d+12)!=512||le64(d+16)!=512)return 2;uint64_t len=le64(d+24);if(len>size-512||len<24)return 2;const unsigned char*p=d+512;if(hash64(p,(size_t)len)!=le64(d+32))return 2;if(memcmp(p,"VYLI",4)||p[4]!=2||p[5]!=0)return 2;unsigned count=p[6]|(p[7]<<8);if(count>64)return 2;
-Machine m;memset(&m,0,sizeof(m));m.ram=calloc(RAM_SIZE,1);if(!m.ram)return 2;size_t off=24;
+Machine m;memset(&m,0,sizeof(m));m.ram=calloc(RAM_SIZE,1);if(!m.ram)return 2;if(!veylith_fb)veylith_fb=calloc(GPU_PIXELS,sizeof(uint32_t));if(!veylith_fb){free(m.ram);return 2;}memset(veylith_fb,0,GPU_PIXELS*sizeof(uint32_t));memset(gpu_regs,0,sizeof(gpu_regs));size_t off=24;
 for(unsigned i=0;i<count;i++){if(off+32>len){free(m.ram);return 2;}u128 addr=le128(p+off),sz=le128(p+off+16);off+=32;if(addr>RAM_SIZE||sz>RAM_SIZE-(size_t)addr||sz>len-off){free(m.ram);return 2;}memcpy(m.ram+(size_t)addr,p+off,(size_t)sz);off+=(size_t)sz;}
 if(off!=len){free(m.ram);return 2;}m.pc=le128(p+8);fprintf(stderr,"[Veylith Firmware] SAND-128 disk verified\n[Veylith Bootloader] Kernelloom loaded; reset PC established\n");
 while(!m.halted&&m.cycles<MAX_STEPS)step(&m);if(!m.halted){fprintf(stderr,"\n[Machine] step limit reached\n");free(m.ram);return 1;}fprintf(stderr,"\n[Machine] halted; exit code %d; %" PRIu64 " Glyphs retired\n",m.exit_code,m.cycles);free(m.ram);return m.exit_code==0?0:1;}
