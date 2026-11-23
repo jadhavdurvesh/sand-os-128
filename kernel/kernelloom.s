@@ -58,8 +58,8 @@ trap_entry:
     sq   [v0 + FRAME + 432], v27
     sq   [v0 + FRAME + 448], v28
     sq   [v0 + FRAME + 464], v29
-    sq   [v0 + FRAME + 480], v126
-    sq   [v0 + FRAME + 496], v127
+    sq   [v0 + FRAME + 480], v30
+    sq   [v0 + FRAME + 496], v31
     sq   [v0 + FRAME + 512], v32
     sq   [v0 + FRAME + 528], v33
     sq   [v0 + FRAME + 544], v34
@@ -220,8 +220,8 @@ syscall_return:
     lq   v27, [v0 + FRAME + 432]
     lq   v28, [v0 + FRAME + 448]
     lq   v29, [v0 + FRAME + 464]
-    lq   v126, [v0 + FRAME + 480]
-    lq   v127, [v0 + FRAME + 496]
+    lq   v30, [v0 + FRAME + 480]
+    lq   v31, [v0 + FRAME + 496]
     lq   v32, [v0 + FRAME + 512]
     lq   v33, [v0 + FRAME + 528]
     lq   v34, [v0 + FRAME + 544]

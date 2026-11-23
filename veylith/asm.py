@@ -249,9 +249,9 @@ class Assembler:
         if name == "la":
             return isa.encode("ldk", parse_reg(ops[0]), 0, 0, self._imm(ops[1]))
         if name == "call":
-            return isa.encode("jal", 31, 0, 0, self._target(ops[0], addr))
+            return isa.encode("jal", 127, 0, 0, self._target(ops[0], addr))
         if name == "ret":
-            return isa.encode("jr", 0, 31, 0, 0)
+            return isa.encode("jr", 0, 127, 0, 0)
         if name == "mv":
             return isa.encode("addi", parse_reg(ops[0]), parse_reg(ops[1]), 0, 0)
         if name == "not":

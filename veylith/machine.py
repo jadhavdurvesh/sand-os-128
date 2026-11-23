@@ -141,7 +141,7 @@ class Machine:
             pass
         elif name == "halt":
             self._need_kernel()
-            self.halted, self.exit_code, self.stop_reason = True, v[1] & ((1 << 64) - 1), "halt"
+            self.halted, self.exit_code, self.stop_reason = True, v[1], "halt"
         elif name in _ALU3:
             self._write(rd, _ALU3[name](a, b))
         elif name in _ALUI:
@@ -149,7 +149,7 @@ class Machine:
         elif name == "ldk":
             self._write(rd, simm)
         elif name == "shk":
-            self._write(rd, ((v[rd] & ((1 << 40) - 1)) << isa.IMM_BITS) | imm
+            self._write(rd, ((v[rd] & ((1 << 40) - 1)) << isa.IMM_BITS) | imm)
         elif name == "clz":
             self._write(rd, 128 - a.bit_length())
         elif name == "popc":

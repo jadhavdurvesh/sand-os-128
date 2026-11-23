@@ -1,131 +1,81 @@
-# 14 — Veylith v0 base profile
+# Veylith 128-Native v1 — Architectural Specification
 
-**Status:** Accepted for v0; implemented in the Python reference emulator; verified by `tests/test_veylith.py`  
-**Scope:** The smallest complete machine that can run a kernel and an isolated user program. Everything not listed here is out of v0.
+**Status:** Implemented reference profile; software-emulated and under active research.  
+**Profile identifier:** `128-native-v1`
 
-This document is the written contract. The glyph table below is generated from `veylith/isa.py`, which the assembler, disassembler and emulator all share; `architecture/veylith-v0-glyphs.json` is the same table in machine-readable form and a test fails if the two drift.
+## 1. Architectural parameters
 
-## 1. State
+| Parameter | Definition |
+|---|---:|
+| General-purpose register width | 128 bits |
+| General-purpose register count | 128 (v0–v127) |
+| General-purpose register file | 16,384 bits |
+| Instruction Glyph width | 128 bits (16 bytes) |
+| Virtual address width | 128 bits |
+| Pointer width | 128 bits |
+| Program counter width | 128 bits |
+| Scalar integer arithmetic | modulo 2^128 |
+| Instruction alignment | 16 bytes |
+| Immediate field | 88 bits |
+| Register index | 7 bits |
+| Endianness | Little-endian |
+| Executable image | VYLI v2 |
 
-| State | Definition |
-|---|---|
-| Veyls | 32 registers `v0..v31`, 128 bits each. `v0` always reads zero; writes to it are discarded. |
-| Glyph location (`pc`) | 128-bit. Must be 8-aligned and below 2^48 to fetch. |
-| Privilege | 0 = kernel, 1 = user. Reset state is kernel. |
-| CSRs | `priv`(0, read-only), `tvec`(1), `tpc`(2), `tcause`(3), `tval`(4), `tpriv`(5), `abase`(6), `alim`(7), `cycles`(8, read-only, glyphs retired), `scratch`(9). Each is 128 bits. |
-| Memory | Flat RAM at address 0 (size is a machine parameter, multiple of 8 bytes) and a one-byte console port at `0xF0000000`. |
+This is a software-defined architecture profile, not a claim that physical silicon has been fabricated. The emulator uses arbitrary-precision host integers and bounded bytearray RAM.
 
-Reset: all veyls, CSRs and RAM are zero, `pc` = 0 (or the first image's entry), privilege = kernel.
+## 2. Register file
 
-## 2. Glyph encoding
+There are 128 architectural registers, each 128 bits wide. `v0` is hardwired to zero. `v1`–`v125` are general-purpose. `v126` is the stack-pointer alias `sp`; `v127` is the link-register alias `lr`. Register indices are seven bits.
 
-Fixed 64 bits, little-endian in memory: `op[63:56] rd[55:51] ra[50:46] rb[45:41] reserved[40:32] imm[31:0]`.
-Each format uses only some fields; unused fields and the reserved field must be zero, otherwise the glyph is ILLEGAL (it never executes as another operation). `imm` is sign-extended to 128 bits unless a glyph says otherwise.
+## 3. Integer model
 
-## 3. Memory and protection
+Unsigned values range from 0 through 2^128−1. Two's-complement signed values range from −2^127 through 2^127−1. Arithmetic wraps modulo 2^128. Division by zero traps DIVZERO. Signed division truncates toward zero; MIN / −1 returns MIN.
 
-- Access sizes: 1, 2, 4, 8, 16 bytes. Natural alignment is required.
-- Check order: address >= 2^48 → ACCESS; misaligned → MISALIGN; region check → ACCESS. `tval` is the full 128-bit address.
-- Kernel: may access all of RAM; may store single bytes to the console port. Loads from the console and any other store width there trap ACCESS.
-- User: every fetch, load and store must lie wholly inside `[abase, abase + alim)` and inside RAM; the console is never reachable.
-- No address translation in v0 (see decision V128-008).
+## 4. 128-bit instruction Glyph
 
-## 4. Traps
+Every instruction is a fixed 128-bit Glyph stored in 16 little-endian bytes.
 
-Causes: 1 ILLEGAL, 2 PRIVILEGE, 3 DIVZERO, 4 MISALIGN, 5 ACCESS, 6 SYSCALL.
+| Field | Bit positions | Width |
+|---|---|---:|
+| Opcode | 127:112 | 16 |
+| Destination register | 111:105 | 7 |
+| Source register A | 104:98 | 7 |
+| Source register B | 97:91 | 7 |
+| Reserved | 90:88 | 3 |
+| Immediate | 87:0 | 88 |
 
-On a trap the machine sets `tpc` (the faulting glyph; for `sys`, the next glyph), `tcause`, `tval` (faulting address, raw glyph for ILLEGAL, `sys` immediate, 0 otherwise) and `tpriv` (the privilege before the trap), enters kernel privilege and jumps to `tvec`. A trapping glyph retires nothing and changes no veyl or memory. If `tvec` is 0 the machine stops with an "unhandled trap" reason, so a kernel bug during early boot is visible instead of looping. A trap inside the kernel overwrites `tpc`; v0 does not provide nested trap state.
+Unused fields and reserved bits must be zero or the encoding is illegal. Arithmetic, memory offsets and relative branches use signed 88-bit immediates. `shk` consumes the immediate as an unsigned bit pattern. Relative control-flow offsets are measured in Glyphs and multiplied by 16; instruction targets must be 16-byte aligned.
 
-## 5. Arithmetic rules
+### Full-width constants
 
-Add, subtract and multiply wrap modulo 2^128. `mulh` is the high half of the unsigned 256-bit product. Division and remainder by zero trap DIVZERO. Signed division truncates toward zero; the one overflow case `-2^127 / -1` yields `-2^127` with remainder 0. Shift and rotate counts are taken modulo 128. `clz` of zero is 128.
+`ldk` sign-extends an 88-bit immediate. `shk` combines the low 40 bits already held in the destination with the low 88-bit immediate:
 
-## 6. Glyph table
+`rd = ((rd & (2^40 - 1)) << 88) | imm[87:0]`
 
-| Glyph | Opcode | Format | Behaviour |
-|---|---|---|---|
-| `nop` | 0x00 | none | no operation |
-| `halt` | 0x01 | none | stop the machine (kernel only); exit code = low 64 bits of v1 |
-| `add` | 0x10 | rrr | rd = ra + rb (wraps mod 2^128) |
-| `sub` | 0x11 | rrr | rd = ra - rb (wraps) |
-| `mul` | 0x12 | rrr | rd = low 128 bits of ra * rb |
-| `mulh` | 0x13 | rrr | rd = high 128 bits of unsigned ra * rb |
-| `udiv` | 0x14 | rrr | rd = ra / rb unsigned; rb == 0 traps DIVZERO |
-| `sdiv` | 0x15 | rrr | rd = ra / rb signed, truncated toward zero; MIN / -1 = MIN; rb == 0 traps |
-| `urem` | 0x16 | rrr | rd = ra % rb unsigned; rb == 0 traps DIVZERO |
-| `srem` | 0x17 | rrr | rd = ra - rb * (ra sdiv rb); MIN rem -1 = 0; rb == 0 traps |
-| `and` | 0x18 | rrr | rd = ra & rb |
-| `or` | 0x19 | rrr | rd = ra | rb |
-| `xor` | 0x1A | rrr | rd = ra ^ rb |
-| `shl` | 0x1B | rrr | rd = ra << (rb mod 128) |
-| `shr` | 0x1C | rrr | rd = ra >> (rb mod 128), zero fill |
-| `sar` | 0x1D | rrr | rd = ra >> (rb mod 128), sign fill |
-| `rol` | 0x1E | rrr | rd = ra rotated left by rb mod 128 |
-| `ror` | 0x1F | rrr | rd = ra rotated right by rb mod 128 |
-| `addi` | 0x20 | rri | rd = ra + sext(imm) |
-| `andi` | 0x21 | rri | rd = ra & sext(imm) |
-| `ori` | 0x22 | rri | rd = ra | sext(imm) |
-| `xori` | 0x23 | rri | rd = ra ^ sext(imm) |
-| `shli` | 0x24 | rri | rd = ra << (imm mod 128) |
-| `shri` | 0x25 | rri | rd = ra >> (imm mod 128), zero fill |
-| `sari` | 0x26 | rri | rd = ra >> (imm mod 128), sign fill |
-| `slt` | 0x28 | rrr | rd = 1 if ra < rb signed else 0 |
-| `sltu` | 0x29 | rrr | rd = 1 if ra < rb unsigned else 0 |
-| `seq` | 0x2A | rrr | rd = 1 if ra == rb else 0 |
-| `ldk` | 0x30 | ri | rd = sext(imm) |
-| `shk` | 0x31 | ri | rd = (rd << 32) | zext(imm) |
-| `clz` | 0x32 | rr | rd = count of leading zero bits of ra (128 for zero) |
-| `popc` | 0x33 | rr | rd = number of set bits of ra |
-| `lb` | 0x40 | ld | rd = zext(mem8[ra + sext(imm)]) |
-| `lh` | 0x41 | ld | rd = zext(mem16[...]) |
-| `lw` | 0x42 | ld | rd = zext(mem32[...]) |
-| `ld` | 0x43 | ld | rd = zext(mem64[...]) |
-| `lq` | 0x44 | ld | rd = mem128[...] |
-| `lbs` | 0x45 | ld | rd = sext(mem8[...]) |
-| `lhs` | 0x46 | ld | rd = sext(mem16[...]) |
-| `lws` | 0x47 | ld | rd = sext(mem32[...]) |
-| `lds` | 0x48 | ld | rd = sext(mem64[...]) |
-| `sb` | 0x50 | st | mem8[ra + sext(imm)] = rb |
-| `sh` | 0x51 | st | mem16[...] = rb |
-| `sw` | 0x52 | st | mem32[...] = rb |
-| `sd` | 0x53 | st | mem64[...] = rb |
-| `sq` | 0x54 | st | mem128[...] = rb |
-| `jmp` | 0x60 | j | pc = pc + 8 * sext(imm) |
-| `jal` | 0x61 | jal | rd = pc + 8; pc = pc + 8 * sext(imm) |
-| `jr` | 0x62 | jr | t = ra + sext(imm); rd = pc + 8; pc = t |
-| `beq` | 0x63 | br | if ra == rb: pc = pc + 8 * sext(imm) |
-| `bne` | 0x64 | br | if ra != rb: branch |
-| `blt` | 0x65 | br | if ra < rb signed: branch |
-| `bge` | 0x66 | br | if ra >= rb signed: branch |
-| `bltu` | 0x67 | br | if ra < rb unsigned: branch |
-| `bgeu` | 0x68 | br | if ra >= rb unsigned: branch |
-| `sys` | 0x70 | j | trap SYSCALL; tval = imm; tpc = pc + 8 |
-| `tret` | 0x71 | none | kernel only: priv = tpriv; pc = tpc |
-| `csrr` | 0x72 | csrr | kernel only: rd = csr[imm] |
-| `csrw` | 0x73 | csrw | kernel only: csr[imm] = ra |
+The `li` pseudo-op emits one Glyph when a value fits signed 88 bits, otherwise two Glyphs. This constructs every 128-bit bit pattern.
 
-Assembler pseudo-ops (not glyphs): `li rd, const` (one to four glyphs), `la rd, label`, `call label`, `ret`, `mv`, `not`, `neg`.
+## 5. 128-bit addressing and physical memory
 
-## 7. Image format (VYLI v1)
+Pointers, effective-address calculations, PC, trap PC and trap values are 128-bit. The virtual address domain is 0 through 2^128−1. The emulator does not allocate a 2^128-byte array: physical RAM is bounded and configurable (default 1 MiB). Addresses are valid only if the access maps to implemented RAM or defined MMIO.
 
-Header: magic `VYLI`, u16 version (1), u16 segment count (≤ 64), u64 entry. Then per segment: u64 address, u64 size, bytes. Readers reject bad magic, other versions, truncated data and trailing bytes; the machine rejects segments that do not fit in RAM.
+Console MMIO is a byte-store register at `0xFFFFFFFFFFFFFFFFFFFFFFFFFFFF0000`. The console accepts byte stores only. Address overflow, unmapped memory and permission violations trap ACCESS. Transfers must be naturally aligned. The initial memory model is flat bounded RAM, not paging; physical capacity is independent of virtual address width.
 
-## 8. Tracebook (v1)
+## 6. Memory transfers
 
-With tracing on, the emulator records one JSON object per step: `tracebook` (version), `n` (glyphs retired), `pc`, `raw`, `op`, changed `regs`, `mem` writes, `trap` (cause and tval, or null), `next_pc`, `priv`. The same image and initial state always produce an identical trace.
+Byte, halfword, word, 64-bit and 128-bit transfers are supported. `lq`/`sq` transfer 128 bits. Narrow loads zero-extend unless the mnemonic requests sign extension. All transfers are little-endian.
 
-## 9. Kernelloom v0 and its calling convention
+## 7. Privilege and Kernelloom
 
-`kernel/kernelloom.s` is written in Veylith assembly. It installs `tvec`, sets the user aperture to `[0x10000, 0x20000)`, enters a user program through `tret`, saves all 31 user veyls on every trap, and implements:
+The model has kernel privilege 0 and user privilege 1. Kernelloom configures a user aperture, enters user mode with `tret`, and receives traps through `tvec`. It saves/restores all 127 writable general-purpose registers (v1–v127) in a 16-byte-aligned frame across syscalls. It remains single-core and non-reentrant.
 
-| Call (v1) | Arguments | Result |
-|---|---|---|
-| 1 write | v2 = pointer, v3 = length | length written, or -1 if the buffer is not wholly inside the aperture |
-| 2 exit | v2 = code | prints the code, halts with it |
-| other | | -1 |
+## 8. VYLI v2 image format
 
-A user fault prints its cause and address and halts with `128 + cause`. The frame is a fixed area, so Kernelloom v0 is single-core and not re-entrant.
+The fixed header is 24 bytes: magic `VYLI`, u16 version 2, u16 segment count, and 16-byte little-endian entry address. Each segment has a 32-byte header: 16-byte address, 16-byte byte length, then segment data. VYLI v1 images are intentionally rejected because this is a breaking 128-bit redesign.
 
-## 10. Not in v0
+## 9. Tracebook v2
 
-Page tables and multiple address spaces, interrupts and timers, atomics and multicore ordering, floating point and vectors, a compiler, a linker, a filesystem, devices other than the console, and any hardware implementation. The emulator is written in Python; speed was not a goal.
+Trace records contain a 128-bit PC and a 32-hex-digit raw Glyph. Register values, memory addresses and trap values use full-width hexadecimal strings. Trace version is 2.
+
+## 10. Implementation boundary
+
+The Python emulator, assembler, disassembler, image format, Kernelloom, examples and CI target this profile. CI tests Python 3.11–3.13. This is a deterministic sequential single-core software model, not cycle-accurate hardware and not a physical memory-capacity claim.

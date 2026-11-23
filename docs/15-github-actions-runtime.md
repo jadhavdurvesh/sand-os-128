@@ -1,4 +1,4 @@
-# Veylith v0 — GitHub Actions runtime guide
+# Veylith 128-Native v1 — GitHub Actions runtime guide
 
 This guide documents the reproducible development runtime for SAND-128 (Veylith). The workflow executes the Python reference emulator; it does not run on a physical 128-bit processor.
 
@@ -17,11 +17,11 @@ Pushes to `main` and pull requests run the default demonstration. A manual workf
 |---|---:|---|---|
 | `scenario` | `hello` | `hello`, `factorial`, `badptr` | User program loaded by the kernel |
 | `python_version` | `3.12` | `3.11`, `3.12`, `3.13` | Python runtime for the demonstration job |
-| `ram_bytes` | `1048576` | Integer, at least 131072, multiple of 8, below 4026531840 | Emulated RAM capacity in bytes |
+| `ram_bytes` | `1048576` | Integer, at least 131072, multiple of 16, below 4026531840 | Emulated RAM capacity in bytes |
 | `max_steps` | `5000000` | Positive integer | Maximum execution steps before the emulator stops with a step-limit reason |
 | `trace` | `false` | Boolean | Whether to save Tracebook JSONL output as a workflow artifact |
 
-The minimum RAM is 131072 bytes (128 KiB) because the current Kernelloom v0 layout uses fixed kernel and user-memory regions. The upper bound keeps RAM below the console MMIO address at `0xF0000000`. RAM must be a multiple of eight bytes.
+The minimum RAM is 131072 bytes (128 KiB) because Kernelloom uses fixed kernel and user-memory regions. RAM must be a multiple of 16 bytes. Console MMIO is mapped near the top of the 128-bit virtual address space; this is independent of the bounded RAM allocation.
 
 These constraints describe the current v0 demonstration platform, not a universal limitation on all future Veylith designs.
 
@@ -29,7 +29,7 @@ These constraints describe the current v0 demonstration platform, not a universa
 
 The `info` command and every execution print:
 
-- Architecture and profile: SAND-128 / Veylith v0.
+- Architecture and profile: SAND-128 / Veylith 128-Native v1.
 - Emulator software version.
 - Register width, register count, and total architectural register-file bits.
 - Instruction glyph width in bits and bytes.
@@ -43,13 +43,13 @@ The `info` command and every execution print:
 
 The runtime summary additionally prints the selected workload, number of loaded images, trace status, stop reason, exit code, retired glyph count, final PC, and final privilege level.
 
-The register-file bit count is the sum of architectural register widths (32 × 128). It is not a claim about physical silicon area or total processor state.
+The register-file bit count is the sum of architectural register widths (128 × 128). It is not a claim about physical silicon area or total processor state.
 
 ## 4. Scenarios
 
 ### hello
 
-A minimal user-mode application. It invokes Kernelloom's write system call, prints `Hello from Veylith v0!`, then exits with code zero.
+A minimal user-mode application. It invokes Kernelloom's write system call, prints `Hello from Veylith 128-Native v1!`, then exits with code zero.
 
 ### factorial
 

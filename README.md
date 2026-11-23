@@ -6,7 +6,7 @@ SAND-128 explores what a deliberately designed 128-bit computing architecture co
 
 This repository is an independent experiment in the SAND ecosystem. It does not replace or redirect the main 64-bit SAND OS project.
 
-> **Research status:** The Veylith v0 base profile is specified and has a working Python reference emulator, assembler/disassembler and a small kernel (Kernelloom v0) written in Veylith assembly. There is no hardware, no compiler and no performance claim. Everything else in the docs remains a proposal.
+> **Research status:** The Veylith 128-Native v1 base profile is specified and has a working Python reference emulator, assembler/disassembler and a small kernel (Kernelloom v0) written in Veylith assembly. There is no hardware, no compiler and no performance claim. Everything else in the docs remains a proposal.
 
 SAND-128 is pure 128-bit and standalone: its kernel is written for the Veylith ISA and runs on the Veylith emulator. It is not built on, and shares no code with, the 64-bit SAND OS.
 
@@ -21,9 +21,7 @@ SAND-128 is pure 128-bit and standalone: its kernel is written for the Veylith I
 
 ## Initial design direction
 
-The project will investigate a 128-bit general-purpose register model and native wide arithmetic. Address width, pointer representation, instruction encoding, floating-point behaviour, privilege levels, and memory translation are separate design decisions; none should be assumed merely from the phrase “128-bit”.
-
-The initial architecture is intentionally not frozen. The documents in [docs/](docs/) establish a vocabulary and a decision process. Any proposed encoding or behaviour remains provisional until specified precisely and covered by tests.
+**Veylith 128-Native v1 is the active implementation profile:** 128 general-purpose registers of 128 bits each, 128-bit instruction Glyphs, 128-bit virtual addresses and pointers, and a 128-bit program counter. Instructions are 16-byte aligned and executable images use VYLI v2. The emulator models the full 128-bit virtual address domain over bounded physical RAM; virtual width does not imply physically installed memory of that size.
 
 ## SAND Universal Architecture Foundation
 
@@ -51,12 +49,12 @@ The shared [SAND Numerical Systems Research (SNSR)](docs/22-sand-numerical-syste
 | [Roadmap](docs/11-roadmap.md) | Research milestones and exit criteria |
 | [Decision register](docs/12-decision-register.md) | Open decisions and accepted design records |
 | [Originality and naming policy](docs/13-originality-and-naming-policy.md) | Rules for custom design and project terminology |
-| [Veylith v0 base profile](docs/14-veylith-v0-spec.md) | The accepted, implemented v0 machine contract |
+| [Veylith 128-Native v1 base profile](docs/14-veylith-v0-spec.md) | The accepted, implemented v0 machine contract |
 | [Decision-record template](docs/templates/decision-record-template.md) | Reusable format for future architecture decisions |
 
 ## Try it
 
-Requires Python 3.9+ and nothing else.
+Requires Python 3.11+ and nothing else.
 
 ```bash
 python3 -m veylith boot                       # Kernelloom boots examples/factorial.s on the emulator
@@ -121,7 +119,7 @@ Use **Actions → Veylith CI → Run workflow** to select a scenario and runtime
 | Area | Status |
 |---|---|
 | Project charter | Drafted |
-| Veylith v0 base profile | Accepted; implemented; verified in the emulator |
+| Veylith 128-Native v1 base profile | Accepted; implemented; verified in the emulator |
 | Reference emulator | Implemented (Python, single core, deterministic, Tracebook) |
 | Assembler / disassembler / image format | Implemented |
 | Kernelloom v0 | Implemented: user mode, aperture protection, 2 syscalls, fault reporting |

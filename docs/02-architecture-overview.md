@@ -19,16 +19,16 @@ The design is divided into layers so that decisions at one layer do not accident
 
 ## 2. Proposed machine profile
 
-The first profile is deliberately modest:
+The accepted Veylith 128-Native v1 profile defines:
 
-- 128-bit general-purpose scalar registers.
+- 128 general-purpose registers, each 128 bits wide.
 - Native 128-bit integer arithmetic.
-- A deterministic, precisely specified execution model.
-- A software reference emulator before physical hardware work.
-- A minimal privileged execution model for kernel experiments.
-- Address width and instruction encoding selected only after documenting trade-offs.
+- Fixed 128-bit instruction Glyphs, aligned to 16 bytes.
+- 128-bit virtual addresses, pointers and program counter.
+- A deterministic software reference emulator and privileged kernel model.
+- Bounded physical RAM, explicitly separate from virtual address width.
 
-The number of registers, instruction length, status-register design, and exact addressing scheme are not frozen in this revision.
+The profile is frozen for v1. The 128-bit address space is a virtual architectural range, not a claim about installed RAM or implemented physical address pins.
 
 ## 3. Architectural state
 
