@@ -29,3 +29,18 @@ GitHub Actions verifies the disk in the native machine, compiles the same C mach
 
 ## Compatibility
 This is not an x86 machine. The image is not directly bootable by PC BIOS/UEFI or a generic x86 QEMU machine. It boots in the Veylith hosted VM and WebAssembly Web Machine. A future FPGA implementation needs its own reset/boot ROM and platform loader.
+
+
+## Kernelloom v1 syscall additions
+
+Kernelloom v1 retains the original write and exit ABI and adds:
+- `3 getpid()`: returns task identifier 1. The kernel is still single-task; this is an identity syscall, not evidence of a scheduler.
+- `4 getcycles()`: returns the guest machine's retired Glyph counter at syscall entry.
+
+Run the syscall smoke test with:
+
+```bash
+python -m veylith boot examples/process_info.s
+```
+
+The test checks both return values from user mode. Multi-task scheduling, task creation, and context switching remain future work.

@@ -6,7 +6,7 @@ SAND-128 explores what a deliberately designed 128-bit computing architecture co
 
 This repository is an independent experiment in the SAND ecosystem. It does not replace or redirect the main 64-bit SAND OS project.
 
-> **Research status:** The Veylith 128-Native v1 base profile is specified and has a working Python reference emulator, assembler/disassembler and a small kernel (Kernelloom v0) written in Veylith assembly. There is no physical hardware, production compiler, or performance claim yet. Features not explicitly marked as implemented remain research proposals.
+> **Research status:** The Veylith 128-Native v1 base profile is specified and has a working Python reference emulator, assembler/disassembler and a small kernel (Kernelloom v1) written in Veylith assembly. There is no physical hardware, production compiler, or performance claim yet. Features not explicitly marked as implemented remain research proposals.
 
 SAND-128 is pure 128-bit and standalone: its kernel is written for the Veylith ISA and runs on the Veylith emulator. It is not built on, and shares no code with, the 64-bit SAND OS.
 
@@ -69,7 +69,7 @@ Requires Python 3.11+ for image assembly and GCC/Clang for the hosted machine.
 
 ```bash
 python3 -m veylith boot                       # Kernelloom boots examples/factorial.s on the emulator
-python3 -m veylith boot examples/badptr.s     # a user fault caught by the kernel
+python3 -m veylith boot examples/badptr.s     # a user fault caught by the kernel\npython3 -m veylith boot examples/process_info.s # getpid/getcycles syscall checks
 python3 -m veylith asm prog.s -o prog.vyl     # assemble
 python3 -m veylith dis prog.vyl               # disassemble
 python3 -m veylith run kernel.vyl user.vyl --trace trace.jsonl
@@ -133,7 +133,7 @@ Use **Actions → Veylith CI → Run workflow** to select a scenario and runtime
 | Veylith 128-Native v1 base profile | Accepted; implemented; verified in the emulator |
 | Reference emulator | Implemented (Python, single core, deterministic, Tracebook) |
 | Assembler / disassembler / image format | Implemented |
-| Kernelloom v0 | Implemented: user mode, aperture protection, 2 syscalls, fault reporting |
+| Kernelloom v1 | Implemented: user mode, aperture protection, 4 syscalls, fault reporting (single-task; no scheduler) |
 | Paging, interrupts, atomics, floating point | Not implemented |
 | Compiler, filesystem, devices beyond a console | Not implemented |
 | Hardware | Not planned |

@@ -3,6 +3,8 @@
 ; and serves two system calls.  Syscall ABI: number in v1, arguments in v2..v3, result in v1.
 ;   1 write(ptr=v2, len=v3)  -> bytes written, or -1 if the buffer is not inside the user aperture
 ;   2 exit(code=v2)          -> prints the code and halts the machine
+;   3 getpid()                -> current task identifier (1; single-task kernel)
+;   4 getcycles()             -> retired Glyph count at syscall entry
 ; Any other call returns -1.  Any user fault is reported and halts the machine with 128+cause.
 ; Kernel scratch registers: v16..v29.  User registers are saved in a fixed frame (single core, not re-entrant).
 
@@ -165,6 +167,10 @@ trap_entry:
     beq  v1, v17, sys_write
     li   v17, 2
     beq  v1, v17, sys_exit
+    li   v17, 3
+    beq  v1, v17, sys_getpid
+    li   v17, 4
+    beq  v1, v17, sys_getcycles
     li   v16, -1
     jmp  syscall_return
 
@@ -188,6 +194,16 @@ write_loop:
     jmp  write_loop
 bad_buffer:
     li   v16, -1
+    jmp  syscall_return
+
+; Return the current task identifier. Kernelloom v1 is single-task, so PID 1 is the only task.
+sys_getpid:
+    li   v16, 1
+    jmp  syscall_return
+
+; Return the guest machine's retired Glyph counter at syscall entry.
+sys_getcycles:
+    csrr v16, cycles
     jmp  syscall_return
 
 syscall_return:
