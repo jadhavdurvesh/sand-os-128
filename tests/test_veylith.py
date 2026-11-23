@@ -66,6 +66,8 @@ class Kernelloom(unittest.TestCase):
         m=Machine(1<<20);m.load(asm.assemble(read("kernel/kernelloom.s")));m.load(asm.assemble(read(example)),set_entry=False);m.run(5_000_000);return m
     def test_hello(self):
         m=self.boot("examples/hello.s");self.assertIn("Hello from Veylith 128-Native v1!",m.console.decode());self.assertEqual((m.stop_reason,m.exit_code),("halt",0))
+    def test_native128_example(self):
+        m=self.boot("examples/native128.s");self.assertIn("128-bit memory round-trip OK!",m.console.decode());self.assertEqual((m.stop_reason,m.exit_code),("halt",0))
     def test_factorial(self):
         m=self.boot("examples/factorial.s");o=m.console.decode();self.assertIn("295232799039604140847618609643520000000",o);self.assertIn("170141183460469231731687303715884105728",o);self.assertEqual((m.stop_reason,m.exit_code),("halt",0))
     def test_badptr(self):
