@@ -153,3 +153,8 @@ See [the decision register](docs/12-decision-register.md) for the current design
 ## License
 
 No license has been selected yet. Until a license file is added, all rights are reserved by the repository owner; do not assume the code or documentation may be reused, redistributed, or modified under an open-source license.
+
+
+### SAND Desktop graphics milestone
+
+Kernelloom now draws an initial 1280×720 desktop scene into a guest-controlled framebuffer using the Veylith graphics MMIO device. The browser displays that framebuffer after guest execution. This first static graphics milestone does not yet include a window manager, text rendering, input events, or interactive applications.

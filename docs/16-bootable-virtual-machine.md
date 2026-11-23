@@ -44,3 +44,8 @@ python -m veylith boot examples/process_info.s
 ```
 
 The test checks both return values from user mode. Multi-task scheduling, task creation, and context switching remain future work.
+
+
+## SAND Desktop framebuffer
+
+The hosted Veylith machine exposes a 1280×720, 32-bit RGBA framebuffer through a kernel-only memory-mapped graphics command block at `0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFE000`. Six 128-bit registers specify X, Y, width, height, color, and command (1 = fill rectangle). Kernelloom draws the initial desktop surfaces from guest assembly; the browser presents the framebuffer returned by the WebAssembly machine. This is a static guest-rendered desktop scene, not yet an interactive desktop: window management, mouse/keyboard input, text rendering, and applications remain future work.

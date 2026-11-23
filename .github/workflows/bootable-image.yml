@@ -41,7 +41,7 @@ jobs:
           grep -F "halted; exit code 0" build/native.log
       - name: Compile same machine to WebAssembly
         run: |
-          emcc native/veylith-vm.c -O2 -w -sWASM=1 -sMODULARIZE=1 -sEXPORT_ES6=1 -sEXPORT_NAME=createVeylithModule -sENVIRONMENT=web -sALLOW_MEMORY_GROWTH=1 -sEXPORTED_RUNTIME_METHODS=callMain,FS -sEXIT_RUNTIME=0 -o web/veylith-vm.js
+          emcc native/veylith-vm.c -O2 -w -sWASM=1 -sMODULARIZE=1 -sEXPORT_ES6=1 -sEXPORT_NAME=createVeylithModule -sENVIRONMENT=web -sALLOW_MEMORY_GROWTH=1 -sEXPORTED_RUNTIME_METHODS=callMain,FS -sEXPORTED_FUNCTIONS=_main,_veylith_framebuffer_ptr,_veylith_framebuffer_size -sEXIT_RUNTIME=0 -o web/veylith-vm.js
       - name: Upload bootable disk artifact
         uses: actions/upload-artifact@v4
         with:
