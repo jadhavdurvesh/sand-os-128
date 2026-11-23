@@ -1,0 +1,389 @@
+{
+  "architecture": "Veylith",
+  "profile": "v0",
+  "glyph_bits": 64,
+  "fields": {
+    "op": "63:56",
+    "rd": "55:51",
+    "ra": "50:46",
+    "rb": "45:41",
+    "reserved": "40:32 (must be 0)",
+    "imm": "31:0"
+  },
+  "glyphs": [
+    {
+      "name": "nop",
+      "opcode": "0x00",
+      "format": "none",
+      "summary": "no operation"
+    },
+    {
+      "name": "halt",
+      "opcode": "0x01",
+      "format": "none",
+      "summary": "stop the machine (kernel only); exit code = low 64 bits of v1"
+    },
+    {
+      "name": "add",
+      "opcode": "0x10",
+      "format": "rrr",
+      "summary": "rd = ra + rb (wraps mod 2^128)"
+    },
+    {
+      "name": "sub",
+      "opcode": "0x11",
+      "format": "rrr",
+      "summary": "rd = ra - rb (wraps)"
+    },
+    {
+      "name": "mul",
+      "opcode": "0x12",
+      "format": "rrr",
+      "summary": "rd = low 128 bits of ra * rb"
+    },
+    {
+      "name": "mulh",
+      "opcode": "0x13",
+      "format": "rrr",
+      "summary": "rd = high 128 bits of unsigned ra * rb"
+    },
+    {
+      "name": "udiv",
+      "opcode": "0x14",
+      "format": "rrr",
+      "summary": "rd = ra / rb unsigned; rb == 0 traps DIVZERO"
+    },
+    {
+      "name": "sdiv",
+      "opcode": "0x15",
+      "format": "rrr",
+      "summary": "rd = ra / rb signed, truncated toward zero; MIN / -1 = MIN; rb == 0 traps"
+    },
+    {
+      "name": "urem",
+      "opcode": "0x16",
+      "format": "rrr",
+      "summary": "rd = ra % rb unsigned; rb == 0 traps DIVZERO"
+    },
+    {
+      "name": "srem",
+      "opcode": "0x17",
+      "format": "rrr",
+      "summary": "rd = ra - rb * (ra sdiv rb); MIN rem -1 = 0; rb == 0 traps"
+    },
+    {
+      "name": "and",
+      "opcode": "0x18",
+      "format": "rrr",
+      "summary": "rd = ra & rb"
+    },
+    {
+      "name": "or",
+      "opcode": "0x19",
+      "format": "rrr",
+      "summary": "rd = ra | rb"
+    },
+    {
+      "name": "xor",
+      "opcode": "0x1A",
+      "format": "rrr",
+      "summary": "rd = ra ^ rb"
+    },
+    {
+      "name": "shl",
+      "opcode": "0x1B",
+      "format": "rrr",
+      "summary": "rd = ra << (rb mod 128)"
+    },
+    {
+      "name": "shr",
+      "opcode": "0x1C",
+      "format": "rrr",
+      "summary": "rd = ra >> (rb mod 128), zero fill"
+    },
+    {
+      "name": "sar",
+      "opcode": "0x1D",
+      "format": "rrr",
+      "summary": "rd = ra >> (rb mod 128), sign fill"
+    },
+    {
+      "name": "rol",
+      "opcode": "0x1E",
+      "format": "rrr",
+      "summary": "rd = ra rotated left by rb mod 128"
+    },
+    {
+      "name": "ror",
+      "opcode": "0x1F",
+      "format": "rrr",
+      "summary": "rd = ra rotated right by rb mod 128"
+    },
+    {
+      "name": "addi",
+      "opcode": "0x20",
+      "format": "rri",
+      "summary": "rd = ra + sext(imm)"
+    },
+    {
+      "name": "andi",
+      "opcode": "0x21",
+      "format": "rri",
+      "summary": "rd = ra & sext(imm)"
+    },
+    {
+      "name": "ori",
+      "opcode": "0x22",
+      "format": "rri",
+      "summary": "rd = ra | sext(imm)"
+    },
+    {
+      "name": "xori",
+      "opcode": "0x23",
+      "format": "rri",
+      "summary": "rd = ra ^ sext(imm)"
+    },
+    {
+      "name": "shli",
+      "opcode": "0x24",
+      "format": "rri",
+      "summary": "rd = ra << (imm mod 128)"
+    },
+    {
+      "name": "shri",
+      "opcode": "0x25",
+      "format": "rri",
+      "summary": "rd = ra >> (imm mod 128), zero fill"
+    },
+    {
+      "name": "sari",
+      "opcode": "0x26",
+      "format": "rri",
+      "summary": "rd = ra >> (imm mod 128), sign fill"
+    },
+    {
+      "name": "slt",
+      "opcode": "0x28",
+      "format": "rrr",
+      "summary": "rd = 1 if ra < rb signed else 0"
+    },
+    {
+      "name": "sltu",
+      "opcode": "0x29",
+      "format": "rrr",
+      "summary": "rd = 1 if ra < rb unsigned else 0"
+    },
+    {
+      "name": "seq",
+      "opcode": "0x2A",
+      "format": "rrr",
+      "summary": "rd = 1 if ra == rb else 0"
+    },
+    {
+      "name": "ldk",
+      "opcode": "0x30",
+      "format": "ri",
+      "summary": "rd = sext(imm)"
+    },
+    {
+      "name": "shk",
+      "opcode": "0x31",
+      "format": "ri",
+      "summary": "rd = (rd << 32) | zext(imm)"
+    },
+    {
+      "name": "clz",
+      "opcode": "0x32",
+      "format": "rr",
+      "summary": "rd = count of leading zero bits of ra (128 for zero)"
+    },
+    {
+      "name": "popc",
+      "opcode": "0x33",
+      "format": "rr",
+      "summary": "rd = number of set bits of ra"
+    },
+    {
+      "name": "lb",
+      "opcode": "0x40",
+      "format": "ld",
+      "summary": "rd = zext(mem8[ra + sext(imm)])"
+    },
+    {
+      "name": "lh",
+      "opcode": "0x41",
+      "format": "ld",
+      "summary": "rd = zext(mem16[...])"
+    },
+    {
+      "name": "lw",
+      "opcode": "0x42",
+      "format": "ld",
+      "summary": "rd = zext(mem32[...])"
+    },
+    {
+      "name": "ld",
+      "opcode": "0x43",
+      "format": "ld",
+      "summary": "rd = zext(mem64[...])"
+    },
+    {
+      "name": "lq",
+      "opcode": "0x44",
+      "format": "ld",
+      "summary": "rd = mem128[...]"
+    },
+    {
+      "name": "lbs",
+      "opcode": "0x45",
+      "format": "ld",
+      "summary": "rd = sext(mem8[...])"
+    },
+    {
+      "name": "lhs",
+      "opcode": "0x46",
+      "format": "ld",
+      "summary": "rd = sext(mem16[...])"
+    },
+    {
+      "name": "lws",
+      "opcode": "0x47",
+      "format": "ld",
+      "summary": "rd = sext(mem32[...])"
+    },
+    {
+      "name": "lds",
+      "opcode": "0x48",
+      "format": "ld",
+      "summary": "rd = sext(mem64[...])"
+    },
+    {
+      "name": "sb",
+      "opcode": "0x50",
+      "format": "st",
+      "summary": "mem8[ra + sext(imm)] = rb"
+    },
+    {
+      "name": "sh",
+      "opcode": "0x51",
+      "format": "st",
+      "summary": "mem16[...] = rb"
+    },
+    {
+      "name": "sw",
+      "opcode": "0x52",
+      "format": "st",
+      "summary": "mem32[...] = rb"
+    },
+    {
+      "name": "sd",
+      "opcode": "0x53",
+      "format": "st",
+      "summary": "mem64[...] = rb"
+    },
+    {
+      "name": "sq",
+      "opcode": "0x54",
+      "format": "st",
+      "summary": "mem128[...] = rb"
+    },
+    {
+      "name": "jmp",
+      "opcode": "0x60",
+      "format": "j",
+      "summary": "pc = pc + 8 * sext(imm)"
+    },
+    {
+      "name": "jal",
+      "opcode": "0x61",
+      "format": "jal",
+      "summary": "rd = pc + 8; pc = pc + 8 * sext(imm)"
+    },
+    {
+      "name": "jr",
+      "opcode": "0x62",
+      "format": "jr",
+      "summary": "t = ra + sext(imm); rd = pc + 8; pc = t"
+    },
+    {
+      "name": "beq",
+      "opcode": "0x63",
+      "format": "br",
+      "summary": "if ra == rb: pc = pc + 8 * sext(imm)"
+    },
+    {
+      "name": "bne",
+      "opcode": "0x64",
+      "format": "br",
+      "summary": "if ra != rb: branch"
+    },
+    {
+      "name": "blt",
+      "opcode": "0x65",
+      "format": "br",
+      "summary": "if ra < rb signed: branch"
+    },
+    {
+      "name": "bge",
+      "opcode": "0x66",
+      "format": "br",
+      "summary": "if ra >= rb signed: branch"
+    },
+    {
+      "name": "bltu",
+      "opcode": "0x67",
+      "format": "br",
+      "summary": "if ra < rb unsigned: branch"
+    },
+    {
+      "name": "bgeu",
+      "opcode": "0x68",
+      "format": "br",
+      "summary": "if ra >= rb unsigned: branch"
+    },
+    {
+      "name": "sys",
+      "opcode": "0x70",
+      "format": "j",
+      "summary": "trap SYSCALL; tval = imm; tpc = pc + 8"
+    },
+    {
+      "name": "tret",
+      "opcode": "0x71",
+      "format": "none",
+      "summary": "kernel only: priv = tpriv; pc = tpc"
+    },
+    {
+      "name": "csrr",
+      "opcode": "0x72",
+      "format": "csrr",
+      "summary": "kernel only: rd = csr[imm]"
+    },
+    {
+      "name": "csrw",
+      "opcode": "0x73",
+      "format": "csrw",
+      "summary": "kernel only: csr[imm] = ra"
+    }
+  ],
+  "csrs": {
+    "priv": 0,
+    "tvec": 1,
+    "tpc": 2,
+    "tcause": 3,
+    "tval": 4,
+    "tpriv": 5,
+    "abase": 6,
+    "alim": 7,
+    "cycles": 8,
+    "scratch": 9
+  },
+  "causes": {
+    "1": "ILLEGAL",
+    "2": "PRIVILEGE",
+    "3": "DIVZERO",
+    "4": "MISALIGN",
+    "5": "ACCESS",
+    "6": "SYSCALL"
+  }
+}

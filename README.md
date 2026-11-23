@@ -6,7 +6,9 @@ SAND-128 explores what a deliberately designed 128-bit computing architecture co
 
 This repository is an independent experiment in the SAND ecosystem. It does not replace or redirect the main 64-bit SAND OS project.
 
-> **Research status:** SAND-128 is at the specification stage. Names and design elements in this repository are project-defined proposals, not claims of implemented hardware, validated performance, or compatibility with existing processors.
+> **Research status:** The Veylith v0 base profile is specified and has a working Python reference emulator, assembler/disassembler and a small kernel (Kernelloom v0) written in Veylith assembly. There is no hardware, no compiler and no performance claim. Everything else in the docs remains a proposal.
+
+SAND-128 is pure 128-bit and standalone: its kernel is written for the Veylith ISA and runs on the Veylith emulator. It is not built on, and shares no code with, the 64-bit SAND OS.
 
 ## Project principles
 
@@ -40,37 +42,48 @@ The initial architecture is intentionally not frozen. The documents in [docs/](d
 | [Roadmap](docs/11-roadmap.md) | Research milestones and exit criteria |
 | [Decision register](docs/12-decision-register.md) | Open decisions and accepted design records |
 | [Originality and naming policy](docs/13-originality-and-naming-policy.md) | Rules for custom design and project terminology |
+| [Veylith v0 base profile](docs/14-veylith-v0-spec.md) | The accepted, implemented v0 machine contract |
 | [Decision-record template](docs/templates/decision-record-template.md) | Reusable format for future architecture decisions |
+
+## Try it
+
+Requires Python 3.9+ and nothing else.
+
+```bash
+python3 -m veylith boot                       # Kernelloom boots examples/factorial.s on the emulator
+python3 -m veylith boot examples/badptr.s     # a user fault caught by the kernel
+python3 -m veylith asm prog.s -o prog.vyl     # assemble
+python3 -m veylith dis prog.vyl               # disassemble
+python3 -m veylith run kernel.vyl user.vyl --trace trace.jsonl
+python3 -m unittest discover -s tests         # 50 tests
+```
 
 ## Repository layout
 
 ```text
 .
 ├── docs/                 Architecture specifications and design records
-├── architecture/         Machine-readable ISA and platform definitions (future)
-├── emulator/             Reference execution model (future)
-├── assembler/            SAND-128 assembler (future)
-├── toolchain/            Compiler and binary utilities (future)
-├── boot/                 Boot protocol and loader experiments (future)
-├── kernel/               Experimental kernel (future)
-├── tests/                Architecture conformance tests (future)
+├── architecture/         Machine-readable glyph table (generated from veylith/isa.py)
+├── veylith/              Reference emulator, assembler/disassembler, image format, CLI
+├── kernel/               Kernelloom v0 (Veylith assembly)
+├── examples/             User programs for Kernelloom
+├── tests/                Conformance and integration tests
+├── boot/ toolchain/      (future)
 └── README.md
 ```
-
-Directories will be added when their first meaningful implementation is ready; empty scaffolding is deliberately avoided.
 
 ## Development status
 
 | Area | Status |
 |---|---|
 | Project charter | Drafted |
-| Architecture vocabulary | Initial proposal |
-| Register model | Research / open |
-| Instruction set | Research / open |
-| Address and memory model | Research / open |
-| Emulator | Not implemented |
-| Assembler and compiler | Not implemented |
-| Boot process and kernel | Not implemented |
+| Veylith v0 base profile | Accepted; implemented; verified in the emulator |
+| Reference emulator | Implemented (Python, single core, deterministic, Tracebook) |
+| Assembler / disassembler / image format | Implemented |
+| Kernelloom v0 | Implemented: user mode, aperture protection, 2 syscalls, fault reporting |
+| Paging, interrupts, atomics, floating point | Not implemented |
+| Compiler, filesystem, devices beyond a console | Not implemented |
+| Hardware | Not planned |
 
 ## Contributing to the design
 

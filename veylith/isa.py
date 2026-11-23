@@ -1,0 +1,158 @@
+"""Veylith v0 instruction table: the single source for the assembler, disassembler and emulator."""
+import json
+import sys
+
+WIDTH = 128
+MASK = (1 << WIDTH) - 1
+SIGN = 1 << (WIDTH - 1)
+GLYPH_BYTES = 8
+VA_BITS = 48
+NUM_VEYLS = 32
+
+# Glyph layout (64 bits): op[63:56] rd[55:51] ra[50:46] rb[45:41] reserved[40:32] imm[31:0]
+# Which fields a format uses; every unused field must be zero or the glyph is illegal.
+FORMATS = {
+    "rrr": ("rd", "ra", "rb"),
+    "rri": ("rd", "ra", "imm"),
+    "ld": ("rd", "ra", "imm"),
+    "ri": ("rd", "imm"),
+    "rr": ("rd", "ra"),
+    "st": ("ra", "rb", "imm"),
+    "br": ("ra", "rb", "imm"),
+    "j": ("imm",),
+    "jal": ("rd", "imm"),
+    "jr": ("rd", "ra", "imm"),
+    "none": (),
+    "csrr": ("rd", "imm"),
+    "csrw": ("ra", "imm"),
+}
+
+_T = [
+    # name, code, fmt, summary
+    ("nop", 0x00, "none", "no operation"),
+    ("halt", 0x01, "none", "stop the machine (kernel only); exit code = low 64 bits of v1"),
+    ("add", 0x10, "rrr", "rd = ra + rb (wraps mod 2^128)"),
+    ("sub", 0x11, "rrr", "rd = ra - rb (wraps)"),
+    ("mul", 0x12, "rrr", "rd = low 128 bits of ra * rb"),
+    ("mulh", 0x13, "rrr", "rd = high 128 bits of unsigned ra * rb"),
+    ("udiv", 0x14, "rrr", "rd = ra / rb unsigned; rb == 0 traps DIVZERO"),
+    ("sdiv", 0x15, "rrr", "rd = ra / rb signed, truncated toward zero; MIN / -1 = MIN; rb == 0 traps"),
+    ("urem", 0x16, "rrr", "rd = ra % rb unsigned; rb == 0 traps DIVZERO"),
+    ("srem", 0x17, "rrr", "rd = ra - rb * (ra sdiv rb); MIN rem -1 = 0; rb == 0 traps"),
+    ("and", 0x18, "rrr", "rd = ra & rb"),
+    ("or", 0x19, "rrr", "rd = ra | rb"),
+    ("xor", 0x1A, "rrr", "rd = ra ^ rb"),
+    ("shl", 0x1B, "rrr", "rd = ra << (rb mod 128)"),
+    ("shr", 0x1C, "rrr", "rd = ra >> (rb mod 128), zero fill"),
+    ("sar", 0x1D, "rrr", "rd = ra >> (rb mod 128), sign fill"),
+    ("rol", 0x1E, "rrr", "rd = ra rotated left by rb mod 128"),
+    ("ror", 0x1F, "rrr", "rd = ra rotated right by rb mod 128"),
+    ("addi", 0x20, "rri", "rd = ra + sext(imm)"),
+    ("andi", 0x21, "rri", "rd = ra & sext(imm)"),
+    ("ori", 0x22, "rri", "rd = ra | sext(imm)"),
+    ("xori", 0x23, "rri", "rd = ra ^ sext(imm)"),
+    ("shli", 0x24, "rri", "rd = ra << (imm mod 128)"),
+    ("shri", 0x25, "rri", "rd = ra >> (imm mod 128), zero fill"),
+    ("sari", 0x26, "rri", "rd = ra >> (imm mod 128), sign fill"),
+    ("slt", 0x28, "rrr", "rd = 1 if ra < rb signed else 0"),
+    ("sltu", 0x29, "rrr", "rd = 1 if ra < rb unsigned else 0"),
+    ("seq", 0x2A, "rrr", "rd = 1 if ra == rb else 0"),
+    ("ldk", 0x30, "ri", "rd = sext(imm)"),
+    ("shk", 0x31, "ri", "rd = (rd << 32) | zext(imm)"),
+    ("clz", 0x32, "rr", "rd = count of leading zero bits of ra (128 for zero)"),
+    ("popc", 0x33, "rr", "rd = number of set bits of ra"),
+    ("lb", 0x40, "ld", "rd = zext(mem8[ra + sext(imm)])"),
+    ("lh", 0x41, "ld", "rd = zext(mem16[...])"),
+    ("lw", 0x42, "ld", "rd = zext(mem32[...])"),
+    ("ld", 0x43, "ld", "rd = zext(mem64[...])"),
+    ("lq", 0x44, "ld", "rd = mem128[...]"),
+    ("lbs", 0x45, "ld", "rd = sext(mem8[...])"),
+    ("lhs", 0x46, "ld", "rd = sext(mem16[...])"),
+    ("lws", 0x47, "ld", "rd = sext(mem32[...])"),
+    ("lds", 0x48, "ld", "rd = sext(mem64[...])"),
+    ("sb", 0x50, "st", "mem8[ra + sext(imm)] = rb"),
+    ("sh", 0x51, "st", "mem16[...] = rb"),
+    ("sw", 0x52, "st", "mem32[...] = rb"),
+    ("sd", 0x53, "st", "mem64[...] = rb"),
+    ("sq", 0x54, "st", "mem128[...] = rb"),
+    ("jmp", 0x60, "j", "pc = pc + 8 * sext(imm)"),
+    ("jal", 0x61, "jal", "rd = pc + 8; pc = pc + 8 * sext(imm)"),
+    ("jr", 0x62, "jr", "t = ra + sext(imm); rd = pc + 8; pc = t"),
+    ("beq", 0x63, "br", "if ra == rb: pc = pc + 8 * sext(imm)"),
+    ("bne", 0x64, "br", "if ra != rb: branch"),
+    ("blt", 0x65, "br", "if ra < rb signed: branch"),
+    ("bge", 0x66, "br", "if ra >= rb signed: branch"),
+    ("bltu", 0x67, "br", "if ra < rb unsigned: branch"),
+    ("bgeu", 0x68, "br", "if ra >= rb unsigned: branch"),
+    ("sys", 0x70, "j", "trap SYSCALL; tval = imm; tpc = pc + 8"),
+    ("tret", 0x71, "none", "kernel only: priv = tpriv; pc = tpc"),
+    ("csrr", 0x72, "csrr", "kernel only: rd = csr[imm]"),
+    ("csrw", 0x73, "csrw", "kernel only: csr[imm] = ra"),
+]
+BY_NAME = {n: (c, f, s) for n, c, f, s in _T}
+BY_CODE = {c: (n, f, s) for n, c, f, s in _T}
+assert len(BY_NAME) == len(BY_CODE) == len(_T)
+
+CSRS = {"priv": 0, "tvec": 1, "tpc": 2, "tcause": 3, "tval": 4, "tpriv": 5,
+        "abase": 6, "alim": 7, "cycles": 8, "scratch": 9}
+CSR_READONLY = {0, 8}
+
+CAUSES = {1: "ILLEGAL", 2: "PRIVILEGE", 3: "DIVZERO", 4: "MISALIGN", 5: "ACCESS", 6: "SYSCALL"}
+CAUSE_ILLEGAL, CAUSE_PRIVILEGE, CAUSE_DIVZERO, CAUSE_MISALIGN, CAUSE_ACCESS, CAUSE_SYSCALL = 1, 2, 3, 4, 5, 6
+
+REG_ALIASES = {"zero": 0, "sp": 30, "lr": 31}
+
+
+def sext(value, bits):
+    value &= (1 << bits) - 1
+    return value - (1 << bits) if value >> (bits - 1) else value
+
+
+def to_signed(v):
+    v &= MASK
+    return v - (1 << WIDTH) if v & SIGN else v
+
+
+def encode(name, rd=0, ra=0, rb=0, imm=0):
+    code, fmt, _ = BY_NAME[name]
+    used = FORMATS[fmt]
+    vals = {"rd": rd, "ra": ra, "rb": rb, "imm": imm}
+    for f, v in vals.items():
+        if f not in used and v != 0:
+            raise ValueError(f"{name}: field {f} is not used by this glyph")
+    for f in ("rd", "ra", "rb"):
+        if not 0 <= vals[f] < NUM_VEYLS:
+            raise ValueError(f"{name}: register out of range")
+    if not -(1 << 31) <= imm < (1 << 32):
+        raise ValueError(f"{name}: immediate {imm} does not fit 32 bits")
+    return (code << 56) | (rd << 51) | (ra << 46) | (rb << 41) | (imm & 0xFFFFFFFF)
+
+
+def decode(word):
+    """Return (name, rd, ra, rb, imm_u32) or None if the glyph is illegal."""
+    code = word >> 56
+    if code not in BY_CODE:
+        return None
+    name, fmt, _ = BY_CODE[code]
+    rd, ra, rb = (word >> 51) & 31, (word >> 46) & 31, (word >> 41) & 31
+    if (word >> 32) & 0x1FF:
+        return None
+    imm = word & 0xFFFFFFFF
+    used = FORMATS[fmt]
+    for f, v in (("rd", rd), ("ra", ra), ("rb", rb), ("imm", imm)):
+        if f not in used and v != 0:
+            return None
+    return name, rd, ra, rb, imm
+
+
+def table_json():
+    return json.dumps({
+        "architecture": "Veylith", "profile": "v0", "glyph_bits": 64,
+        "fields": {"op": "63:56", "rd": "55:51", "ra": "50:46", "rb": "45:41", "reserved": "40:32 (must be 0)", "imm": "31:0"},
+        "glyphs": [{"name": n, "opcode": f"0x{c:02X}", "format": f, "summary": s} for n, c, f, s in _T],
+        "csrs": CSRS, "causes": {str(k): v for k, v in CAUSES.items()},
+    }, indent=2) + "\n"
+
+
+if __name__ == "__main__":
+    sys.stdout.write(table_json())
