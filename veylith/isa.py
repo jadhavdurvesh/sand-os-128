@@ -140,6 +140,8 @@ def decode(word):
         return None
     name, fmt, _ = BY_CODE[code]
     rd, ra, rb = (word >> 104) & 0xFF, (word >> 96) & 0xFF, (word >> 88) & 0xFF
+    if any(index >= NUM_VEYLS for index in (rd, ra, rb)):
+        return None
     imm = word & IMM_MASK
     used = FORMATS[fmt]
     for field, value in (("rd", rd), ("ra", ra), ("rb", rb), ("imm", imm)):

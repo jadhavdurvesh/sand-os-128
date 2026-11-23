@@ -18,6 +18,7 @@ class Architecture(unittest.TestCase):
         self.assertEqual(reg("li v100, 9","v100"),9);self.assertEqual(reg("li v128, 7","v128"),7)
     def test_glyph_reserved(self):
         self.assertEqual(len(isa.encode("halt").to_bytes(16,"little")),16);self.assertIsNone(isa.decode(isa.encode("nop")|(1<<88)))
+        self.assertIsNone(isa.decode(isa.encode("addi",rd=1,ra=2,imm=0)|(129<<104)))
     def test_opcode_roundtrip(self):
         for n,(_,fmt,_) in isa.BY_NAME.items():
             kw={"rd":100 if "rd" in isa.FORMATS[fmt] else 0,"ra":101 if "ra" in isa.FORMATS[fmt] else 0,"rb":102 if "rb" in isa.FORMATS[fmt] else 0,"imm":7 if "imm" in isa.FORMATS[fmt] else 0}
