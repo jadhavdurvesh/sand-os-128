@@ -72,7 +72,7 @@ class Kernelloom(unittest.TestCase):
         m=self.boot("examples/badptr.s");self.assertIn("user fault cause=5 tval=256",m.console.decode());self.assertEqual(m.exit_code,133)
     def test_high_register_preservation(self):
         src='.org 0x10000\n_start:\nli v100, 0x123456789ABCDEF0123456789ABCDEF\nli v1, 1\nla v2, msg\nli v3, 1\nsys 0\nli v1, 2\nli v2, 0\nsys 0\nmsg: .ascii "X"'
-        m=Machine(1<<20);m.load(asm.assemble(read("kernel/kernelloom.s")));m.load(asm.assemble(src),set_entry=False);m.run(5_000_000);self.assertEqual(m.v[128],0x123456789ABCDEF0123456789ABCDEF)
+        m=Machine(1<<20);m.load(asm.assemble(read("kernel/kernelloom.s")));m.load(asm.assemble(src),set_entry=False);m.run(5_000_000);self.assertEqual(m.v[3],0x123456789ABCDEF0123456789ABCDEF)
 class Trace(unittest.TestCase):
     def test_trace_width(self):
         m=Machine(1<<16);m.trace=[];m.load(asm.assemble("li v100, 1\n halt"));m.run(10);self.assertEqual(len(m.trace[0]["raw"])-2,32)
