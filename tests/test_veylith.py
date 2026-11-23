@@ -1,5 +1,5 @@
 import json,os,unittest
-from veylith import asm,image,isa
+from veylith import asm,image,isa,disk
 from veylith.machine import Machine,CONSOLE_ADDR
 MAX=(1<<128)-1;MIN=1<<127
 def read(p):
