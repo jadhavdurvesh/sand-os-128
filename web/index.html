@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>SAND-128 · Veylith Web Machine</title><link rel="stylesheet" href="./style.css"></head>
+<body>
+<header><div class="brand"><span class="mark">S</span><div><b>SAND-128</b><small>VEY LITH 128-NATIVE · WEB MACHINE</small></div></div><span id="status">MACHINE OFF</span></header>
+<main><section class="hero"><p class="eyebrow">VIRTUAL PLATFORM · PROFILE 128-NATIVE-V1</p><h1>Boot Veylith.</h1><p>Load a SAND-128 disk image and start Kernelloom in your browser. No Python installation or local emulator required.</p></section>
+<section class="machine"><div class="toolbar"><div><span class="led" id="led"></span><b>Veylith Machine</b><small>128-bit guest architecture</small></div><div class="actions"><button id="sample">Load sample disk</button><label class="filebutton">Open .img<input type="file" id="file" accept=".img,application/octet-stream"></label><button id="boot" class="primary" disabled>Boot</button></div></div>
+<div class="screen"><div class="screenbar"><span>TTY0 · KERNEL CONSOLE</span><span id="screenstate">WAITING FOR IMAGE</span></div><pre id="output">SAND-128 Veylith Web Machine
+Awaiting a SAND-128 virtual disk image (.img)...
+
+Choose "Load sample disk" or open an image from GitHub Actions.</pre></div>
+<div class="stats"><div><small>GENERAL REGISTERS</small><b>128 × 128-bit</b></div><div><small>INSTRUCTION</small><b>128-bit Glyph</b></div><div><small>VIRTUAL ADDRESS</small><b>128-bit</b></div><div><small>GUEST RAM</small><b>1 MiB</b></div></div></section>
+<section class="details"><div><h2>What is running?</h2><p>The page loads the same compiled C Veylith machine as the native host build, compiled to WebAssembly. It verifies the SAND128D disk, loads VYLI v2 segments, resets the guest CPU and runs Kernelloom. The guest architecture is Veylith, not x86.</p></div><div><h2>Disk image</h2><p>Download the image from the latest GitHub Actions workflow artifact, or load the sample published with this page.</p><a href="./downloads/SAND-128-Veylith.img" download>Download SAND-128-Veylith.img ↓</a></div></section>
+<footer>SAND-128 · VEYLITH · EXPERIMENTAL SOFTWARE PLATFORM</footer></main>
+<script type="module">
+import {bootDisk} from "./runner.js";
+const $=id=>document.getElementById(id);let bytes=null,busy=false;
+function state(s,on=false){$("status").textContent=s;$("led").classList.toggle("on",on);}
+function setImage(b,name){bytes=b;$("boot").disabled=false;$("output").textContent="Disk loaded: "+name+"\\nReady to boot.";$("screenstate").textContent="IMAGE READY";state("IMAGE READY",true);}
+$("sample").onclick=async()=>{try{const r=await fetch("./downloads/SAND-128-Veylith.img");if(!r.ok)throw Error("Sample disk not found. Download the latest GitHub Actions artifact.");setImage(await r.arrayBuffer(),"SAND-128-Veylith.img");}catch(e){$("output").textContent=e.message;state("LOAD FAILED");}};
+$("file").onchange=async e=>{const f=e.target.files[0];if(f)setImage(await f.arrayBuffer(),f.name);};
+$("boot").onclick=async()=>{if(!bytes||busy)return;busy=true;$("boot").disabled=true;$("output").textContent="[Firmware] Initialising WebAssembly Veylith machine...\\n";$("screenstate").textContent="BOOTING";state("RUNNING",true);let log=[];
+try{const r=await bootDisk(bytes,s=>{log.push(s);$("output").textContent=log.join("\\n");$("output").scrollTop=$("output").scrollHeight;});$("output").textContent=log.join("\\n")+"\\n\\n[Web Machine] Guest execution returned: "+r.exitCode;$("screenstate").textContent="HALTED";state("HALTED",r.exitCode===0);}
+catch(e){$("output").textContent=log.join("\\n")+"\\nBOOT ERROR: "+e.message;$("screenstate").textContent="FAULT";state("BOOT ERROR");}
+busy=false;$("boot").disabled=false;};
+</script></body></html>

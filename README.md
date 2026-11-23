@@ -52,9 +52,20 @@ The shared [SAND Numerical Systems Research (SNSR)](docs/22-sand-numerical-syste
 | [Veylith 128-Native v1 base profile](docs/14-veylith-v0-spec.md) | The accepted, implemented v0 machine contract |
 | [Decision-record template](docs/templates/decision-record-template.md) | Reusable format for future architecture decisions |
 
+## Bootable image and browser emulator
+
+GitHub Actions builds a sector-aligned `SAND-128-Veylith.img`, boots it in the compiled C hosted machine, compiles that same machine to WebAssembly for the browser, uploads the disk as an Actions artifact, and publishes the web emulator through GitHub Pages. The disk is for the Veylith virtual platform, not an x86 BIOS/UEFI disk.
+
+- Web emulator: `https://jadhavdurvesh.github.io/sand-os-128/` after Pages deployment is enabled and completes.
+- Download `SAND-128-Veylith.img` from the latest Actions artifact or the deployed web page.
+- Build locally: `python -m veylith disk --output build/SAND-128-Veylith.img`.
+- Run locally: `gcc -std=c11 -O2 -o veylith-vm native/veylith-vm.c && ./veylith-vm build/SAND-128-Veylith.img`.
+
+Python is used for assembly and image creation. The guest runtime is the compiled C machine, or the same C machine compiled to WebAssembly in the browser.
+
 ## Try it
 
-Requires Python 3.11+ and nothing else.
+Requires Python 3.11+ for image assembly and GCC/Clang for the hosted machine.
 
 ```bash
 python3 -m veylith boot                       # Kernelloom boots examples/factorial.s on the emulator

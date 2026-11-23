@@ -57,7 +57,7 @@ if(wr&&d)m->v[d]=z;m->v[0]=0;m->pc=npc;m->cycles++;
 #undef W
 }
 static uint64_t hash64(const unsigned char*p,size_t n){uint64_t h=14695981039346656037ULL;for(size_t i=0;i<n;i++){h^=p[i];h*=1099511628211ULL;}return h;}
-static int boot(const unsigned char*d,size_t size){if(size<512||memcmp(d,"SAND128D",8))return 2;if(le32(d+8)!=1||le32(d+12)!=512||le64(d+16)!=512)return 2;uint64_t len=le64(d+24);if(len>size-512||len<24)return 2;const unsigned char*p=d+512;if(hash64(p,(size_t)len)!=le64(d+32))return 2;if(memcmp(p,"VYLI",4)||le32(p+4)!=2)return 2;unsigned count=p[6]|(p[7]<<8);if(count>64)return 2;
+static int boot(const unsigned char*d,size_t size){if(size<512||memcmp(d,"SAND128D",8))return 2;if(le32(d+8)!=1||le32(d+12)!=512||le64(d+16)!=512)return 2;uint64_t len=le64(d+24);if(len>size-512||len<24)return 2;const unsigned char*p=d+512;if(hash64(p,(size_t)len)!=le64(d+32))return 2;if(memcmp(p,"VYLI",4)||p[4]!=2||p[5]!=0)return 2;unsigned count=p[6]|(p[7]<<8);if(count>64)return 2;
 Machine m;memset(&m,0,sizeof(m));m.ram=calloc(RAM_SIZE,1);if(!m.ram)return 2;size_t off=24;
 for(unsigned i=0;i<count;i++){if(off+32>len){free(m.ram);return 2;}u128 addr=le128(p+off),sz=le128(p+off+16);off+=32;if(addr>RAM_SIZE||sz>RAM_SIZE-(size_t)addr||sz>len-off){free(m.ram);return 2;}memcpy(m.ram+(size_t)addr,p+off,(size_t)sz);off+=(size_t)sz;}
 if(off!=len){free(m.ram);return 2;}m.pc=le128(p+8);fprintf(stderr,"[Veylith Firmware] SAND-128 disk verified\n[Veylith Bootloader] Kernelloom loaded; reset PC established\n");

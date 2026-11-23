@@ -1,0 +1,68 @@
+name: Veylith bootable image and web emulator
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: "latest"
+      - name: Build SAND-128 disk
+        run: python -m veylith disk --output build/SAND-128-Veylith.img
+      - name: Compile native hosted machine
+        run: |
+          mkdir -p build
+          gcc -std=c11 -O2 -w -o build/veylith-vm native/veylith-vm.c
+      - name: Boot disk in native machine
+        run: |
+          set -o pipefail
+          build/veylith-vm build/SAND-128-Veylith.img 2>&1 | tee build/native.log
+          grep -F "Hello from Veylith 128-Native v1!" build/native.log
+          grep -F "halted; exit code 0" build/native.log
+      - name: Compile same machine to WebAssembly
+        run: |
+          emcc native/veylith-vm.c -O2 -w -sWASM=1 -sMODULARIZE=1 -sEXPORT_ES6=1 -sEXPORT_NAME=createVeylithModule -sENVIRONMENT=web -sALLOW_MEMORY_GROWTH=1 -sEXPORTED_RUNTIME_METHODS=callMain,FS -sEXIT_RUNTIME=0 -o web/veylith-vm.js
+      - name: Upload bootable disk artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SAND-128-Veylith-disk-\${{ github.run_number }}
+          path: build/SAND-128-Veylith.img
+      - name: Prepare GitHub Pages
+        if: github.event_name != 'pull_request'
+        run: |
+          mkdir -p web/downloads
+          cp build/SAND-128-Veylith.img web/downloads/SAND-128-Veylith.img
+      - uses: actions/configure-pages@v5
+        if: github.event_name != 'pull_request'
+      - uses: actions/upload-pages-artifact@v3
+        if: github.event_name != 'pull_request'
+        with:
+          path: web
+  deploy:
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: \${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
