@@ -81,7 +81,7 @@ python -W error -m unittest discover -s tests -v
 5. Set RAM bytes and maximum steps.
 6. Enable Tracebook if an instruction-by-instruction JSONL trace is wanted.
 7. Start the workflow and inspect the job logs.
-8. If tracing was enabled, download the `vey lith-tracebook` artifact from the completed run (artifact name includes the run number).
+8. If tracing was enabled, download the `veylith-tracebook` artifact from the completed run (artifact name includes the run number).
 
 ## 7. Interpreting results
 
