@@ -62,6 +62,12 @@ class Toolchain(unittest.TestCase):
         b=asm.assemble(s);self.assertEqual(asm.assemble(asm.disassemble_image(b)),b)
     def test_v129_rejected(self):
         with self.assertRaises(asm.AsmError):asm.assemble("li v129, 1")
+class DiskImage(unittest.TestCase):
+    def test_build_and_unpack(self):
+        blob=disk.build(read("kernel/kernelloom.s"),read("examples/hello.s"));self.assertEqual(len(blob),2<<20);payload=disk.unpack(blob);segs,entry=image.unpack(payload);self.assertEqual(entry,0);self.assertTrue(any(a==0x10000 for a,_ in segs))
+    def test_checksum_rejects_corruption(self):
+        blob=bytearray(disk.build(read("kernel/kernelloom.s"),read("examples/hello.s")));blob[600]^=1
+        with self.assertRaises(disk.DiskError):disk.unpack(blob)
 class Kernelloom(unittest.TestCase):
     def boot(self,example):
         m=Machine(1<<20);m.load(asm.assemble(read("kernel/kernelloom.s")));m.load(asm.assemble(read(example)),set_entry=False);m.run(5_000_000);return m
