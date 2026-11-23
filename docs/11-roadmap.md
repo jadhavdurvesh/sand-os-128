@@ -83,12 +83,12 @@ Each extension requires a design record, specification, and tests. There is no o
 | Area | Status |
 |---|---|
 | Charter and initial docs | Drafted |
-| Veylith machine specification | Not frozen |
-| Emulator | Not implemented |
-| Assembler / disassembler | Not implemented |
+| Veylith machine specification | v0 base profile accepted (doc 14); later profiles open |
+| Emulator | Implemented for v0 |
+| Assembler / disassembler | Implemented for v0 |
 | Compiler backend | Not implemented |
-| Bootloader | Not implemented |
-| Kernel | Not implemented |
+| Bootloader | Not implemented (the emulator loads images directly) |
+| Kernel | Kernelloom v0 implemented; no paging, interrupts or filesystem |
 | Hardware | Not planned / not required |
 
 ## Guiding rule
