@@ -23,6 +23,10 @@ The project will investigate a 128-bit general-purpose register model and native
 
 The initial architecture is intentionally not frozen. The documents in [docs/](docs/) establish a vocabulary and a decision process. Any proposed encoding or behaviour remains provisional until specified precisely and covered by tests.
 
+## SAND Universal Architecture Foundation
+
+All architectures in the SAND family follow the shared [SAND Universal Architecture Foundation (SUAF)](docs/00-sand-universal-architecture-foundation.md). It establishes common engineering principles and terminology while preserving independent instruction sets, register models, memory contracts, execution semantics, and ABIs.
+
 ## Documentation
 
 | Document | Purpose |
