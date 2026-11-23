@@ -56,7 +56,7 @@ The shared [SAND Numerical Systems Research (SNSR)](docs/22-sand-numerical-syste
 
 GitHub Actions builds a sector-aligned `SAND-128-Veylith.img`, boots it in the compiled C hosted machine, compiles that same machine to WebAssembly for the browser, uploads the disk as an Actions artifact, and publishes the web emulator through GitHub Pages. The disk is for the Veylith virtual platform, not an x86 BIOS/UEFI disk.
 
-- Web emulator: `https://jadhavdurvesh.github.io/sand-os-128/` after Pages deployment is enabled and completes.
+- Web emulator: `https://jadhavdurvesh.github.io/sand-os-128/`. Enable it once in repository **Settings → Pages → Build and deployment → Source → GitHub Actions**; the next successful main-branch workflow deploys it.
 - Download `SAND-128-Veylith.img` from the latest Actions artifact or the deployed web page.
 - Build locally: `python -m veylith disk --output build/SAND-128-Veylith.img`.
 - Run locally: `gcc -std=c11 -O2 -o veylith-vm native/veylith-vm.c && ./veylith-vm build/SAND-128-Veylith.img`.

@@ -14,6 +14,8 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    outputs:
+      pages_enabled: ${{ steps.pages.outcome == 'success' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -50,16 +52,16 @@ jobs:
         run: |
           mkdir -p web/downloads
           cp build/SAND-128-Veylith.img web/downloads/SAND-128-Veylith.img
-      - uses: actions/configure-pages@v5
+      - id: pages
+        uses: actions/configure-pages@v5
         if: github.event_name != 'pull_request'
-        with:
-          enablement: true
+        continue-on-error: true
       - uses: actions/upload-pages-artifact@v3
-        if: github.event_name != 'pull_request'
+        if: github.event_name != 'pull_request' && steps.pages.outcome == 'success'
         with:
           path: web
   deploy:
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && needs.build.outputs.pages_enabled == 'true'
     needs: build
     runs-on: ubuntu-latest
     environment:
