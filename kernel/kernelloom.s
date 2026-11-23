@@ -36,6 +36,7 @@ _start:
 ; SAND Desktop 128 initial guest-rendered framebuffer scene, 1280x720.
 ; gpu_rect: v1=x, v2=y, v3=width, v4=height, v5=RGBA word.
 desktop_init:
+    sq [v0 + 0x5000], v128       ; preserve caller link across nested gpu_rect calls
     li v1, 0
     li v2, 0
     li v3, 1280
@@ -96,6 +97,7 @@ desktop_init:
     li v4, 190
     li v5, 0xFF49382B
     call gpu_rect
+    lq v128, [v0 + 0x5000]
     ret
 
 gpu_rect:
