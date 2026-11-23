@@ -8,7 +8,7 @@
 | Parameter | Definition |
 |---|---:|
 | General-purpose register width | 128 bits |
-| General-purpose register count | 128 (v0–v127) |
+| General-purpose register count | 128 writable (v1–v128), plus zero slot v0 |
 | General-purpose register file | 16,384 bits |
 | Instruction Glyph width | 128 bits (16 bytes) |
 | Virtual address width | 128 bits |
@@ -17,7 +17,7 @@
 | Scalar integer arithmetic | modulo 2^128 |
 | Instruction alignment | 16 bytes |
 | Immediate field | 88 bits |
-| Register index | 7 bits |
+| Register index | 8 bits |
 | Endianness | Little-endian |
 | Executable image | VYLI v2 |
 
@@ -25,7 +25,7 @@ This is a software-defined architecture profile, not a claim that physical silic
 
 ## 2. Register file
 
-There are 128 architectural registers, each 128 bits wide. `v0` is hardwired to zero. `v1`–`v125` are general-purpose. `v126` is the stack-pointer alias `sp`; `v127` is the link-register alias `lr`. Register indices are seven bits.
+There are 128 architectural registers, each 128 bits wide. `v0` is hardwired to zero. `v1`–`v126` are general-purpose; `v127` is `sp`; `v128` is `lr`. v0 is a hardwired-zero slot, not counted among the GPRs. Register indices are eight bits.
 
 ## 3. Integer model
 
@@ -38,9 +38,9 @@ Every instruction is a fixed 128-bit Glyph stored in 16 little-endian bytes.
 | Field | Bit positions | Width |
 |---|---|---:|
 | Opcode | 127:112 | 16 |
-| Destination register | 111:105 | 7 |
-| Source register A | 104:98 | 7 |
-| Source register B | 97:91 | 7 |
+| Destination register | 111:104 | 8 |
+| Source register A | 103:96 | 8 |
+| Source register B | 95:88 | 8 |
 | Reserved | 90:88 | 3 |
 | Immediate | 87:0 | 88 |
 
@@ -66,7 +66,7 @@ Byte, halfword, word, 64-bit and 128-bit transfers are supported. `lq`/`sq` tran
 
 ## 7. Privilege and Kernelloom
 
-The model has kernel privilege 0 and user privilege 1. Kernelloom configures a user aperture, enters user mode with `tret`, and receives traps through `tvec`. It saves/restores all 127 writable general-purpose registers (v1–v127) in a 16-byte-aligned frame across syscalls. It remains single-core and non-reentrant.
+The model has kernel privilege 0 and user privilege 1. Kernelloom configures a user aperture, enters user mode with `tret`, and receives traps through `tvec`. It saves/restores all 127 writable general-purpose registers (v1–v128) in a 16-byte-aligned frame across syscalls. It remains single-core and non-reentrant.
 
 ## 8. VYLI v2 image format
 

@@ -7,12 +7,13 @@ MASK = (1 << WIDTH) - 1
 SIGN = 1 << (WIDTH - 1)
 GLYPH_BYTES = 16
 VA_BITS = 128
-NUM_VEYLS = 128
-REG_BITS = 7
+NUM_GPRS = 128
+NUM_VEYLS = NUM_GPRS + 1
+REG_BITS = 8
 IMM_BITS = 88
 IMM_MASK = (1 << IMM_BITS) - 1
 
-# Glyph layout (128 bits): op[127:112] rd[111:105] ra[104:98] rb[97:91] reserved[90:88] imm[87:0]
+# Glyph layout (128 bits): op[127:112] rd[111:104] ra[103:96] rb[95:88] imm[87:0]
 # Which fields a format uses; every unused field must be zero or the glyph is illegal.
 FORMATS = {
     "rrr": ("rd", "ra", "rb"),
@@ -103,7 +104,7 @@ CSR_READONLY = {0, 8}
 CAUSES = {1: "ILLEGAL", 2: "PRIVILEGE", 3: "DIVZERO", 4: "MISALIGN", 5: "ACCESS", 6: "SYSCALL"}
 CAUSE_ILLEGAL, CAUSE_PRIVILEGE, CAUSE_DIVZERO, CAUSE_MISALIGN, CAUSE_ACCESS, CAUSE_SYSCALL = 1, 2, 3, 4, 5, 6
 
-REG_ALIASES = {"zero": 0, "sp": 126, "lr": 127}
+REG_ALIASES = {"zero": 0, "sp": 127, "lr": 128}
 
 
 def sext(value, bits):
@@ -125,10 +126,10 @@ def encode(name, rd=0, ra=0, rb=0, imm=0):
             raise ValueError(f"{name}: field {field} is not used by this glyph")
     for field in ("rd", "ra", "rb"):
         if not 0 <= vals[field] < NUM_VEYLS:
-            raise ValueError(f"{name}: register out of range (v0..v127)")
+            raise ValueError(f"{name}: register out of range (v0..v128)")
     if not -(1 << (IMM_BITS - 1)) <= imm < (1 << IMM_BITS):
         raise ValueError(f"{name}: immediate does not fit {IMM_BITS} bits")
-    return (code << 112) | (rd << 105) | (ra << 98) | (rb << 91) | (imm & IMM_MASK)
+    return (code << 112) | (rd << 104) | (ra << 96) | (rb << 88) | (imm & IMM_MASK)
 
 
 def decode(word):
@@ -138,9 +139,7 @@ def decode(word):
     if code not in BY_CODE:
         return None
     name, fmt, _ = BY_CODE[code]
-    rd, ra, rb = (word >> 105) & 0x7F, (word >> 98) & 0x7F, (word >> 91) & 0x7F
-    if (word >> 88) & 0x7:
-        return None
+    rd, ra, rb = (word >> 104) & 0xFF, (word >> 96) & 0xFF, (word >> 88) & 0xFF
     imm = word & IMM_MASK
     used = FORMATS[fmt]
     for field, value in (("rd", rd), ("ra", ra), ("rb", rb), ("imm", imm)):
@@ -151,8 +150,8 @@ def decode(word):
 
 def table_json():
     return json.dumps({
-        "architecture": "Veylith", "profile": "128-native-v1", "register_width_bits": WIDTH, "register_count": NUM_VEYLS, "virtual_address_bits": VA_BITS, "glyph_bits": 128,
-        "fields": {"op": "127:112", "rd": "111:105", "ra": "104:98", "rb": "97:91", "reserved": "90:88 (must be 0)", "imm": "87:0 (88-bit immediate)"},
+        "architecture": "Veylith", "profile": "128-native-v1", "register_width_bits": WIDTH, "register_count": NUM_GPRS, "register_slots_including_zero": NUM_VEYLS, "register_index_bits": REG_BITS, "virtual_address_bits": VA_BITS, "glyph_bits": 128,
+        "fields": {"op": "127:112", "rd": "111:104", "ra": "103:96", "rb": "95:88", "imm": "87:0 (88-bit immediate)"},
         "glyphs": [{"name": n, "opcode": f"0x{c:02X}", "format": f, "summary": s} for n, c, f, s in _T],
         "csrs": CSRS, "causes": {str(k): v for k, v in CAUSES.items()},
     }, indent=2) + "\n"

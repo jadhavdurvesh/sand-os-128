@@ -1,7 +1,7 @@
 """Veylith assembler and disassembler.
 
 Syntax: one statement per line, `;` starts a comment, `label:` defines a label.
-Registers v0..v127 (aliases: zero=v0, sp=v126, lr=v127). CSR names: priv tvec tpc tcause tval tpriv abase alim cycles scratch.
+Registers v1..v128 (128 writable GPRs; zero=v0, sp=v127, lr=v128). CSR names: priv tvec tpc tcause tval tpriv abase alim cycles scratch.
 Directives: .org .equ .align .space .byte .half .word .quad .oct .ascii .asciz
 Pseudo-ops: li rd, const   la rd, label   call label   ret   mv rd, ra   not rd, ra   neg rd, ra
 """
@@ -249,9 +249,9 @@ class Assembler:
         if name == "la":
             return isa.encode("ldk", parse_reg(ops[0]), 0, 0, self._imm(ops[1]))
         if name == "call":
-            return isa.encode("jal", 127, 0, 0, self._target(ops[0], addr))
+            return isa.encode("jal", 128, 0, 0, self._target(ops[0], addr))
         if name == "ret":
-            return isa.encode("jr", 0, 127, 0, 0)
+            return isa.encode("jr", 0, 128, 0, 0)
         if name == "mv":
             return isa.encode("addi", parse_reg(ops[0]), parse_reg(ops[1]), 0, 0)
         if name == "not":

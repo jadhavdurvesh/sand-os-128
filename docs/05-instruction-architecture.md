@@ -6,13 +6,12 @@
 | Field | Bits | Width |
 |---|---|---:|
 | Opcode | 127:112 | 16 |
-| rd | 111:105 | 7 |
-| ra | 104:98 | 7 |
-| rb | 97:91 | 7 |
-| Reserved | 90:88 | 3 |
+| rd | 111:104 | 8 |
+| ra | 103:96 | 8 |
+| rb | 95:88 | 8 |
 | Immediate | 87:0 | 88 |
 
-Register fields address v0–v127. Unused fields and reserved bits must be zero. Illegal encodings trap. Glyphs are little-endian and aligned to 16-byte boundaries.
+Register fields address v0–v128; v0 is the zero constant and v1–v128 are writable GPRs. All bits in the 128-bit Glyph are assigned. Unused fields and reserved bits must be zero. Illegal encodings trap. Glyphs are little-endian and aligned to 16-byte boundaries.
 
 Most immediate operands are signed 88-bit values. ldk sign-extends its immediate. shk combines the destination's low 40 bits shifted left by 88 with the unsigned 88-bit immediate, allowing li to synthesize any 128-bit value in at most two Glyphs.
 

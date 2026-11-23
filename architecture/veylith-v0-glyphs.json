@@ -3,14 +3,15 @@
   "profile": "128-native-v1",
   "register_width_bits": 128,
   "register_count": 128,
+  "register_slots_including_zero": 129,
+  "register_index_bits": 8,
   "virtual_address_bits": 128,
   "glyph_bits": 128,
   "fields": {
     "op": "127:112",
-    "rd": "111:105",
-    "ra": "104:98",
-    "rb": "97:91",
-    "reserved": "90:88 (must be 0)",
+    "rd": "111:104",
+    "ra": "103:96",
+    "rb": "95:88",
     "imm": "87:0 (88-bit immediate)"
   },
   "glyphs": [

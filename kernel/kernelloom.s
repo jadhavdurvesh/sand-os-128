@@ -16,7 +16,7 @@
 _start:
     la   v1, trap_entry
     csrw tvec, v1
-    li   v126, 0x6000
+    li   v127, 0x6000
     la   v1, banner
     call puts
     li   v1, USER_BASE
@@ -156,7 +156,8 @@ trap_entry:
     sq   [v0 + FRAME + 2000], v125
     sq   [v0 + FRAME + 2016], v126
     sq   [v0 + FRAME + 2032], v127
-    li   v126, 0x6000
+    sq   [v0 + FRAME + 2048], v128
+    li   v127, 0x6000
     csrr v16, tcause
     li   v17, 6
     bne  v16, v17, user_fault
@@ -318,6 +319,7 @@ syscall_return:
     lq   v125, [v0 + FRAME + 2000]
     lq   v126, [v0 + FRAME + 2016]
     lq   v127, [v0 + FRAME + 2032]
+    lq   v128, [v0 + FRAME + 2048]
     tret
 
 sys_exit:

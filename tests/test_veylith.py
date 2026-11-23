@@ -12,10 +12,10 @@ def trap(src):
     m=run("la v120, handler\n csrw tvec, v120\n"+src+"\nhalt\nhandler:\n csrr v121, tcause\n csrr v122, tval\n halt")
     return m.v[121],m.v[122]
 class Architecture(unittest.TestCase):
-    def test_parameters(self):self.assertEqual((isa.WIDTH,isa.NUM_VEYLS,isa.GLYPH_BYTES*8,isa.VA_BITS),(128,128,128,128))
+    def test_parameters(self):self.assertEqual((isa.WIDTH,isa.NUM_GPRS,isa.GLYPH_BYTES*8,isa.VA_BITS),(128,128,128,128))
     def test_all_registers(self):
-        for i in range(128):self.assertEqual(isa.decode(isa.encode("addi",rd=i,ra=i,imm=1))[1:3],(i,i))
-        self.assertEqual(reg("li v100, 9","v100"),9);self.assertEqual(reg("li v127, 7","v127"),7)
+        for i in range(1,129):self.assertEqual(isa.decode(isa.encode("addi",rd=i,ra=i,imm=1))[1:3],(i,i))
+        self.assertEqual(reg("li v100, 9","v100"),9);self.assertEqual(reg("li v128, 7","v128"),7)
     def test_glyph_reserved(self):
         self.assertEqual(len(isa.encode("halt").to_bytes(16,"little")),16);self.assertIsNone(isa.decode(isa.encode("nop")|(1<<88)))
     def test_opcode_roundtrip(self):
@@ -57,10 +57,10 @@ class Toolchain(unittest.TestCase):
     def test_v1_rejected(self):
         with self.assertRaises(image.ImageError):image.unpack(b"VYLI"+(1).to_bytes(2,"little")+b"\0"*18)
     def test_roundtrip(self):
-        s="li v100, 0x123456789ABCDEF0123456789ABCDEF\nadd v99, v100, v127\nlq v3, [v99 + 16]\nsq [v99 + -16], v3\nbeq v100, v99, end\nend: halt"
+        s="li v128, 0x123456789ABCDEF0123456789ABCDEF\nadd v99, v100, v127\nlq v3, [v99 + 16]\nsq [v99 + -16], v3\nbeq v100, v99, end\nend: halt"
         b=asm.assemble(s);self.assertEqual(asm.assemble(asm.disassemble_image(b)),b)
-    def test_v128_rejected(self):
-        with self.assertRaises(asm.AsmError):asm.assemble("li v128, 1")
+    def test_v129_rejected(self):
+        with self.assertRaises(asm.AsmError):asm.assemble("li v129, 1")
 class Kernelloom(unittest.TestCase):
     def boot(self,example):
         m=Machine(1<<20);m.load(asm.assemble(read("kernel/kernelloom.s")));m.load(asm.assemble(read(example)),set_entry=False);m.run(5_000_000);return m
@@ -72,7 +72,7 @@ class Kernelloom(unittest.TestCase):
         m=self.boot("examples/badptr.s");self.assertIn("user fault cause=5 tval=256",m.console.decode());self.assertEqual(m.exit_code,133)
     def test_high_register_preservation(self):
         src='.org 0x10000\n_start:\nli v100, 0x123456789ABCDEF0123456789ABCDEF\nli v1, 1\nla v2, msg\nli v3, 1\nsys 0\nli v1, 2\nli v2, 0\nsys 0\nmsg: .ascii "X"'
-        m=Machine(1<<20);m.load(asm.assemble(read("kernel/kernelloom.s")));m.load(asm.assemble(src),set_entry=False);m.run(5_000_000);self.assertEqual(m.v[100],0x123456789ABCDEF0123456789ABCDEF)
+        m=Machine(1<<20);m.load(asm.assemble(read("kernel/kernelloom.s")));m.load(asm.assemble(src),set_entry=False);m.run(5_000_000);self.assertEqual(m.v[128],0x123456789ABCDEF0123456789ABCDEF)
 class Trace(unittest.TestCase):
     def test_trace_width(self):
         m=Machine(1<<16);m.trace=[];m.load(asm.assemble("li v100, 1\n halt"));m.run(10);self.assertEqual(len(m.trace[0]["raw"])-2,32)

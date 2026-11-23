@@ -61,7 +61,7 @@ jobs:
       - name: Print conformance environment
         run: |
           python --version
-          python -c "from veylith import isa; print('Architecture: SAND-128 / Veylith 128-Native v1'); print(f'Registers: {isa.NUM_VEYLS} x {isa.WIDTH}-bit'); print(f'Glyph width: {isa.GLYPH_BYTES * 8} bits'); print(f'Virtual address width: {isa.VA_BITS} bits')"
+          python -c "from veylith import isa; print('Architecture: SAND-128 / Veylith 128-Native v1'); print(f'Registers: {isa.NUM_GPRS} x {isa.WIDTH}-bit'); print(f'Glyph width: {isa.GLYPH_BYTES * 8} bits'); print(f'Virtual address width: {isa.VA_BITS} bits')"
       - name: Run unit and integration tests
         run: python -W error -m unittest discover -s tests -v
       - name: Verify opcode table is reproducible
