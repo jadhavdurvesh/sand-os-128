@@ -1,6 +1,9 @@
 {
   "architecture": "Veylith",
   "profile": "128-native-v1",
+  "register_width_bits": 128,
+  "register_count": 128,
+  "virtual_address_bits": 128,
   "glyph_bits": 128,
   "fields": {
     "op": "127:112",
@@ -385,8 +388,5 @@
     "4": "MISALIGN",
     "5": "ACCESS",
     "6": "SYSCALL"
-  },
-  "register_width_bits": 128,
-  "register_count": 128,
-  "virtual_address_bits": 128
+  }
 }
