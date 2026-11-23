@@ -6,7 +6,7 @@ SAND-128 explores what a deliberately designed 128-bit computing architecture co
 
 This repository is an independent experiment in the SAND ecosystem. It does not replace or redirect the main 64-bit SAND OS project.
 
-> **Research status:** The Veylith 128-Native v1 base profile is specified and has a working Python reference emulator, assembler/disassembler and a small kernel (Kernelloom v0) written in Veylith assembly. There is no hardware, no compiler and no performance claim. Everything else in the docs remains a proposal.
+> **Research status:** The Veylith 128-Native v1 base profile is specified and has a working Python reference emulator, assembler/disassembler and a small kernel (Kernelloom v0) written in Veylith assembly. There is no physical hardware, production compiler, or performance claim yet. Features not explicitly marked as implemented remain research proposals.
 
 SAND-128 is pure 128-bit and standalone: its kernel is written for the Veylith ISA and runs on the Veylith emulator. It is not built on, and shares no code with, the 64-bit SAND OS.
 
@@ -40,8 +40,8 @@ The shared [SAND Numerical Systems Research (SNSR)](docs/22-sand-numerical-syste
 | [Architecture overview](docs/02-architecture-overview.md) | Machine model and major architectural layers |
 | [Core vocabulary](docs/03-core-vocabulary.md) | Project-specific names and terminology |
 | [Register and data model](docs/04-register-and-data-model.md) | Register classes, values, and data representation |
-| [Instruction architecture](docs/05-instruction-architecture.md) | Instruction design goals and encoding questions |
-| [Memory architecture](docs/06-memory-architecture.md) | Addressing, translation, protection, and memory model |
+| [Instruction architecture](docs/05-instruction-architecture.md) | 128-bit Glyph encoding, operand rules, and execution semantics |
+| [Memory architecture](docs/06-memory-architecture.md) | 128-bit virtual addressing, bounded physical memory, and protection model |
 | [Execution and privilege](docs/07-execution-and-privilege.md) | Execution states, traps, and privilege model |
 | [Emulator plan](docs/08-emulator-plan.md) | Reference emulator scope and validation strategy |
 | [Kernel architecture](docs/09-kernel-architecture.md) | Kernel responsibilities and boot strategy |

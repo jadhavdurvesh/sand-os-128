@@ -25,7 +25,7 @@ This is a software-defined architecture profile, not a claim that physical silic
 
 ## 2. Register file
 
-There are 128 architectural registers, each 128 bits wide. `v0` is hardwired to zero. `v1`–`v126` are general-purpose; `v127` is `sp`; `v128` is `lr`. v0 is a hardwired-zero slot, not counted among the GPRs. Register indices are eight bits.
+There are 128 writable general-purpose registers, each 128 bits wide, addressed as v1–v128. v0 is a separate hardwired-zero operand slot and is not counted among the GPRs. The ABI names v127 as `sp` and v128 as `lr`; these remain members of the writable GPR file. Register indices are eight bits.
 
 ## 3. Integer model
 
