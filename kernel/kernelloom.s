@@ -6,17 +6,17 @@
 ; Any other call returns -1.  Any user fault is reported and halts the machine with 128+cause.
 ; Kernel scratch registers: v16..v29.  User registers are saved in a fixed frame (single core, not re-entrant).
 
-.equ CONSOLE,   0xF0000000
+.equ CONSOLE,   0xFFFFFFFFFFFFFFFFFFFFFFFFFFFF0000
 .equ USER_BASE, 0x10000
 .equ USER_SIZE, 0x10000
-.equ FRAME,     0x7000
+.equ FRAME,     0x6000
 .equ DIGITS,    0x7F00          ; 40-byte scratch for decimal conversion (end of buffer)
 
 .org 0
 _start:
     la   v1, trap_entry
     csrw tvec, v1
-    li   v30, 0x6000
+    li   v126, 0x6000
     la   v1, banner
     call puts
     li   v1, USER_BASE
@@ -58,9 +58,105 @@ trap_entry:
     sq   [v0 + FRAME + 432], v27
     sq   [v0 + FRAME + 448], v28
     sq   [v0 + FRAME + 464], v29
-    sq   [v0 + FRAME + 480], v30
-    sq   [v0 + FRAME + 496], v31
-    li   v30, 0x6000
+    sq   [v0 + FRAME + 480], v126
+    sq   [v0 + FRAME + 496], v127
+    sq   [v0 + FRAME + 512], v32
+    sq   [v0 + FRAME + 528], v33
+    sq   [v0 + FRAME + 544], v34
+    sq   [v0 + FRAME + 560], v35
+    sq   [v0 + FRAME + 576], v36
+    sq   [v0 + FRAME + 592], v37
+    sq   [v0 + FRAME + 608], v38
+    sq   [v0 + FRAME + 624], v39
+    sq   [v0 + FRAME + 640], v40
+    sq   [v0 + FRAME + 656], v41
+    sq   [v0 + FRAME + 672], v42
+    sq   [v0 + FRAME + 688], v43
+    sq   [v0 + FRAME + 704], v44
+    sq   [v0 + FRAME + 720], v45
+    sq   [v0 + FRAME + 736], v46
+    sq   [v0 + FRAME + 752], v47
+    sq   [v0 + FRAME + 768], v48
+    sq   [v0 + FRAME + 784], v49
+    sq   [v0 + FRAME + 800], v50
+    sq   [v0 + FRAME + 816], v51
+    sq   [v0 + FRAME + 832], v52
+    sq   [v0 + FRAME + 848], v53
+    sq   [v0 + FRAME + 864], v54
+    sq   [v0 + FRAME + 880], v55
+    sq   [v0 + FRAME + 896], v56
+    sq   [v0 + FRAME + 912], v57
+    sq   [v0 + FRAME + 928], v58
+    sq   [v0 + FRAME + 944], v59
+    sq   [v0 + FRAME + 960], v60
+    sq   [v0 + FRAME + 976], v61
+    sq   [v0 + FRAME + 992], v62
+    sq   [v0 + FRAME + 1008], v63
+    sq   [v0 + FRAME + 1024], v64
+    sq   [v0 + FRAME + 1040], v65
+    sq   [v0 + FRAME + 1056], v66
+    sq   [v0 + FRAME + 1072], v67
+    sq   [v0 + FRAME + 1088], v68
+    sq   [v0 + FRAME + 1104], v69
+    sq   [v0 + FRAME + 1120], v70
+    sq   [v0 + FRAME + 1136], v71
+    sq   [v0 + FRAME + 1152], v72
+    sq   [v0 + FRAME + 1168], v73
+    sq   [v0 + FRAME + 1184], v74
+    sq   [v0 + FRAME + 1200], v75
+    sq   [v0 + FRAME + 1216], v76
+    sq   [v0 + FRAME + 1232], v77
+    sq   [v0 + FRAME + 1248], v78
+    sq   [v0 + FRAME + 1264], v79
+    sq   [v0 + FRAME + 1280], v80
+    sq   [v0 + FRAME + 1296], v81
+    sq   [v0 + FRAME + 1312], v82
+    sq   [v0 + FRAME + 1328], v83
+    sq   [v0 + FRAME + 1344], v84
+    sq   [v0 + FRAME + 1360], v85
+    sq   [v0 + FRAME + 1376], v86
+    sq   [v0 + FRAME + 1392], v87
+    sq   [v0 + FRAME + 1408], v88
+    sq   [v0 + FRAME + 1424], v89
+    sq   [v0 + FRAME + 1440], v90
+    sq   [v0 + FRAME + 1456], v91
+    sq   [v0 + FRAME + 1472], v92
+    sq   [v0 + FRAME + 1488], v93
+    sq   [v0 + FRAME + 1504], v94
+    sq   [v0 + FRAME + 1520], v95
+    sq   [v0 + FRAME + 1536], v96
+    sq   [v0 + FRAME + 1552], v97
+    sq   [v0 + FRAME + 1568], v98
+    sq   [v0 + FRAME + 1584], v99
+    sq   [v0 + FRAME + 1600], v100
+    sq   [v0 + FRAME + 1616], v101
+    sq   [v0 + FRAME + 1632], v102
+    sq   [v0 + FRAME + 1648], v103
+    sq   [v0 + FRAME + 1664], v104
+    sq   [v0 + FRAME + 1680], v105
+    sq   [v0 + FRAME + 1696], v106
+    sq   [v0 + FRAME + 1712], v107
+    sq   [v0 + FRAME + 1728], v108
+    sq   [v0 + FRAME + 1744], v109
+    sq   [v0 + FRAME + 1760], v110
+    sq   [v0 + FRAME + 1776], v111
+    sq   [v0 + FRAME + 1792], v112
+    sq   [v0 + FRAME + 1808], v113
+    sq   [v0 + FRAME + 1824], v114
+    sq   [v0 + FRAME + 1840], v115
+    sq   [v0 + FRAME + 1856], v116
+    sq   [v0 + FRAME + 1872], v117
+    sq   [v0 + FRAME + 1888], v118
+    sq   [v0 + FRAME + 1904], v119
+    sq   [v0 + FRAME + 1920], v120
+    sq   [v0 + FRAME + 1936], v121
+    sq   [v0 + FRAME + 1952], v122
+    sq   [v0 + FRAME + 1968], v123
+    sq   [v0 + FRAME + 1984], v124
+    sq   [v0 + FRAME + 2000], v125
+    sq   [v0 + FRAME + 2016], v126
+    sq   [v0 + FRAME + 2032], v127
+    li   v126, 0x6000
     csrr v16, tcause
     li   v17, 6
     bne  v16, v17, user_fault
@@ -124,8 +220,104 @@ syscall_return:
     lq   v27, [v0 + FRAME + 432]
     lq   v28, [v0 + FRAME + 448]
     lq   v29, [v0 + FRAME + 464]
-    lq   v30, [v0 + FRAME + 480]
-    lq   v31, [v0 + FRAME + 496]
+    lq   v126, [v0 + FRAME + 480]
+    lq   v127, [v0 + FRAME + 496]
+    lq   v32, [v0 + FRAME + 512]
+    lq   v33, [v0 + FRAME + 528]
+    lq   v34, [v0 + FRAME + 544]
+    lq   v35, [v0 + FRAME + 560]
+    lq   v36, [v0 + FRAME + 576]
+    lq   v37, [v0 + FRAME + 592]
+    lq   v38, [v0 + FRAME + 608]
+    lq   v39, [v0 + FRAME + 624]
+    lq   v40, [v0 + FRAME + 640]
+    lq   v41, [v0 + FRAME + 656]
+    lq   v42, [v0 + FRAME + 672]
+    lq   v43, [v0 + FRAME + 688]
+    lq   v44, [v0 + FRAME + 704]
+    lq   v45, [v0 + FRAME + 720]
+    lq   v46, [v0 + FRAME + 736]
+    lq   v47, [v0 + FRAME + 752]
+    lq   v48, [v0 + FRAME + 768]
+    lq   v49, [v0 + FRAME + 784]
+    lq   v50, [v0 + FRAME + 800]
+    lq   v51, [v0 + FRAME + 816]
+    lq   v52, [v0 + FRAME + 832]
+    lq   v53, [v0 + FRAME + 848]
+    lq   v54, [v0 + FRAME + 864]
+    lq   v55, [v0 + FRAME + 880]
+    lq   v56, [v0 + FRAME + 896]
+    lq   v57, [v0 + FRAME + 912]
+    lq   v58, [v0 + FRAME + 928]
+    lq   v59, [v0 + FRAME + 944]
+    lq   v60, [v0 + FRAME + 960]
+    lq   v61, [v0 + FRAME + 976]
+    lq   v62, [v0 + FRAME + 992]
+    lq   v63, [v0 + FRAME + 1008]
+    lq   v64, [v0 + FRAME + 1024]
+    lq   v65, [v0 + FRAME + 1040]
+    lq   v66, [v0 + FRAME + 1056]
+    lq   v67, [v0 + FRAME + 1072]
+    lq   v68, [v0 + FRAME + 1088]
+    lq   v69, [v0 + FRAME + 1104]
+    lq   v70, [v0 + FRAME + 1120]
+    lq   v71, [v0 + FRAME + 1136]
+    lq   v72, [v0 + FRAME + 1152]
+    lq   v73, [v0 + FRAME + 1168]
+    lq   v74, [v0 + FRAME + 1184]
+    lq   v75, [v0 + FRAME + 1200]
+    lq   v76, [v0 + FRAME + 1216]
+    lq   v77, [v0 + FRAME + 1232]
+    lq   v78, [v0 + FRAME + 1248]
+    lq   v79, [v0 + FRAME + 1264]
+    lq   v80, [v0 + FRAME + 1280]
+    lq   v81, [v0 + FRAME + 1296]
+    lq   v82, [v0 + FRAME + 1312]
+    lq   v83, [v0 + FRAME + 1328]
+    lq   v84, [v0 + FRAME + 1344]
+    lq   v85, [v0 + FRAME + 1360]
+    lq   v86, [v0 + FRAME + 1376]
+    lq   v87, [v0 + FRAME + 1392]
+    lq   v88, [v0 + FRAME + 1408]
+    lq   v89, [v0 + FRAME + 1424]
+    lq   v90, [v0 + FRAME + 1440]
+    lq   v91, [v0 + FRAME + 1456]
+    lq   v92, [v0 + FRAME + 1472]
+    lq   v93, [v0 + FRAME + 1488]
+    lq   v94, [v0 + FRAME + 1504]
+    lq   v95, [v0 + FRAME + 1520]
+    lq   v96, [v0 + FRAME + 1536]
+    lq   v97, [v0 + FRAME + 1552]
+    lq   v98, [v0 + FRAME + 1568]
+    lq   v99, [v0 + FRAME + 1584]
+    lq   v100, [v0 + FRAME + 1600]
+    lq   v101, [v0 + FRAME + 1616]
+    lq   v102, [v0 + FRAME + 1632]
+    lq   v103, [v0 + FRAME + 1648]
+    lq   v104, [v0 + FRAME + 1664]
+    lq   v105, [v0 + FRAME + 1680]
+    lq   v106, [v0 + FRAME + 1696]
+    lq   v107, [v0 + FRAME + 1712]
+    lq   v108, [v0 + FRAME + 1728]
+    lq   v109, [v0 + FRAME + 1744]
+    lq   v110, [v0 + FRAME + 1760]
+    lq   v111, [v0 + FRAME + 1776]
+    lq   v112, [v0 + FRAME + 1792]
+    lq   v113, [v0 + FRAME + 1808]
+    lq   v114, [v0 + FRAME + 1824]
+    lq   v115, [v0 + FRAME + 1840]
+    lq   v116, [v0 + FRAME + 1856]
+    lq   v117, [v0 + FRAME + 1872]
+    lq   v118, [v0 + FRAME + 1888]
+    lq   v119, [v0 + FRAME + 1904]
+    lq   v120, [v0 + FRAME + 1920]
+    lq   v121, [v0 + FRAME + 1936]
+    lq   v122, [v0 + FRAME + 1952]
+    lq   v123, [v0 + FRAME + 1968]
+    lq   v124, [v0 + FRAME + 1984]
+    lq   v125, [v0 + FRAME + 2000]
+    lq   v126, [v0 + FRAME + 2016]
+    lq   v127, [v0 + FRAME + 2032]
     tret
 
 sys_exit:
@@ -190,7 +382,7 @@ dec_out:
     bne  v19, v21, dec_out
     ret
 
-banner:    .asciz "[kernelloom] Veylith v0 booting user program\n"
+banner:    .asciz "[kernelloom] Veylith 128-Native v1 booting user program\n"
 msg_exit:  .asciz "[kernelloom] user exit "
 msg_fault: .asciz "[kernelloom] user fault cause="
 msg_addr:  .asciz " tval="

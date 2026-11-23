@@ -1,7 +1,7 @@
 """Veylith assembler and disassembler.
 
 Syntax: one statement per line, `;` starts a comment, `label:` defines a label.
-Registers v0..v31 (aliases: zero=v0, sp=v30, lr=v31). CSR names: priv tvec tpc tcause tval tpriv abase alim cycles scratch.
+Registers v0..v127 (aliases: zero=v0, sp=v126, lr=v127). CSR names: priv tvec tpc tcause tval tpriv abase alim cycles scratch.
 Directives: .org .equ .align .space .byte .half .word .quad .oct .ascii .asciz
 Pseudo-ops: li rd, const   la rd, label   call label   ret   mv rd, ra   not rd, ra   neg rd, ra
 """
@@ -101,12 +101,11 @@ def split_ops(text):
 
 
 def li_words(value):
-    """Smallest n in 1..4 such that value fits a signed 32n-bit field; returns the n 32-bit words, high first."""
+    """Return one or two chunks sufficient to construct any 128-bit value."""
     value &= isa.MASK
-    for n in range(1, 5):
-        if isa.sext(value, 32 * n) & isa.MASK == value:
-            return [(value >> (32 * i)) & 0xFFFFFFFF for i in reversed(range(n))]
-    raise AssertionError
+    if isa.sext(value, isa.IMM_BITS) & isa.MASK == value:
+        return [isa.sext(value, isa.IMM_BITS)]
+    return [(value >> isa.IMM_BITS) & ((1 << 40) - 1), value & isa.IMM_MASK]
 
 
 class Assembler:
@@ -153,8 +152,8 @@ class Assembler:
         sym = self.symbols
         if head.startswith("."):
             return self._directive(head, rest, addr, no)
-        if addr % 8:
-            raise AsmError("instruction at unaligned address (use .align 8 after data)")
+        if addr % isa.GLYPH_BYTES:
+            raise AsmError("instruction at unaligned address (use .align 16 after data)")
         ops = split_ops(rest)
         if head == "li":
             if len(ops) != 2:
@@ -162,9 +161,9 @@ class Assembler:
             words = li_words(evaluate(ops[1], sym))
             rd = parse_reg(ops[0])
             self.items.append((addr, "glyphs", [("ldk", rd, 0, 0, words[0])] + [("shk", rd, 0, 0, w) for w in words[1:]], no))
-            return addr + 8 * len(words)
+            return addr + isa.GLYPH_BYTES * len(words)
         self.items.append((addr, "inst", (head, ops), no))
-        return addr + 8
+        return addr + isa.GLYPH_BYTES
 
     def _directive(self, d, rest, addr, no):
         sym = self.symbols
@@ -204,9 +203,9 @@ class Assembler:
                 if kind == "data":
                     blob = payload
                 elif kind == "glyphs":
-                    blob = b"".join(isa.encode(n, rd, ra, rb, imm).to_bytes(8, "little") for n, rd, ra, rb, imm in payload)
+                    blob = b"".join(isa.encode(n, rd, ra, rb, imm).to_bytes(isa.GLYPH_BYTES, "little") for n, rd, ra, rb, imm in payload)
                 else:
-                    blob = self._encode(addr, *payload).to_bytes(8, "little")
+                    blob = self._encode(addr, *payload).to_bytes(isa.GLYPH_BYTES, "little")
             except KeyError as e:
                 raise AsmError(f"line {no}: undefined symbol {e}") from None
             except (AsmError, ValueError) as e:
@@ -229,9 +228,9 @@ class Assembler:
 
     def _target(self, tok, addr):
         t = self._imm(tok)
-        if (t - addr) % 8:
-            raise AsmError("branch target is not glyph-aligned")
-        return (t - addr) // 8
+        if (t - addr) % isa.GLYPH_BYTES:
+            raise AsmError("branch target is not 128-bit glyph-aligned")
+        return (t - addr) // isa.GLYPH_BYTES
 
     def _mem(self, tok):
         m = re.fullmatch(r"\[\s*([^\]+\-]+?)\s*(?:([+-])\s*(.+?))?\s*\]", tok)
@@ -314,9 +313,9 @@ _CSR_NAMES = {v: k for k, v in isa.CSRS.items()}
 def disassemble_word(word, addr=0):
     d = isa.decode(word)
     if d is None:
-        return f".glyph 0x{word:016x}  ; illegal"
+        return f".glyph 0x{word:032x}  ; illegal"
     name, rd, ra, rb, imm = d
-    simm = isa.sext(imm, 32)
+    simm = isa.sext(imm, isa.IMM_BITS)
     fmt = isa.BY_NAME[name][1]
     r = lambda i: f"v{i}"
     if fmt == "rrr":
@@ -332,11 +331,11 @@ def disassemble_word(word, addr=0):
     if fmt == "rr":
         return f"{name} {r(rd)}, {r(ra)}"
     if fmt == "br":
-        return f"{name} {r(ra)}, {r(rb)}, 0x{(addr + 8 * simm) & isa.MASK:x}"
+        return f"{name} {r(ra)}, {r(rb)}, 0x{(addr + isa.GLYPH_BYTES * simm) & isa.MASK:x}"
     if fmt == "j":
-        return f"{name} {imm}" if name == "sys" else f"{name} 0x{(addr + 8 * simm) & isa.MASK:x}"
+        return f"{name} {imm}" if name == "sys" else f"{name} 0x{(addr + isa.GLYPH_BYTES * simm) & isa.MASK:x}"
     if fmt == "jal":
-        return f"{name} {r(rd)}, 0x{(addr + 8 * simm) & isa.MASK:x}"
+        return f"{name} {r(rd)}, 0x{(addr + isa.GLYPH_BYTES * simm) & isa.MASK:x}"
     if fmt == "jr":
         return f"{name} {r(rd)}, {r(ra)}, {simm}"
     if fmt == "csrr":
@@ -351,9 +350,9 @@ def disassemble_image(blob):
     out = [f"; entry 0x{entry:x}"]
     for addr, data in segs:
         out.append(f".org 0x{addr:x}")
-        for off in range(0, len(data) - 7, 8):
-            w = int.from_bytes(data[off:off + 8], "little")
+        for off in range(0, len(data) - (isa.GLYPH_BYTES - 1), isa.GLYPH_BYTES):
+            w = int.from_bytes(data[off:off + isa.GLYPH_BYTES], "little")
             out.append(f"  {disassemble_word(w, addr + off)}")
-        if len(data) % 8:
-            out.append(f"  ; {len(data) % 8} trailing data byte(s)")
+        if len(data) % isa.GLYPH_BYTES:
+            out.append(f"  ; {len(data) % isa.GLYPH_BYTES} trailing data byte(s)")
     return "\n".join(out) + "\n"

@@ -25,7 +25,7 @@ on:
           - "3.12"
           - "3.13"
       ram_bytes:
-        description: "Emulated RAM in bytes (positive multiple of 8; default 1048576)"
+        description: "Emulated RAM in bytes (positive multiple of 16; default 1048576)"
         required: true
         default: "1048576"
         type: string
@@ -61,7 +61,7 @@ jobs:
       - name: Print conformance environment
         run: |
           python --version
-          python -c "from veylith import isa; print('Architecture: SAND-128 / Veylith v0'); print(f'Registers: {isa.NUM_VEYLS} x {isa.WIDTH}-bit'); print(f'Glyph width: {isa.GLYPH_BYTES * 8} bits'); print(f'Virtual address width: {isa.VA_BITS} bits')"
+          python -c "from veylith import isa; print('Architecture: SAND-128 / Veylith 128-Native v1'); print(f'Registers: {isa.NUM_VEYLS} x {isa.WIDTH}-bit'); print(f'Glyph width: {isa.GLYPH_BYTES * 8} bits'); print(f'Virtual address width: {isa.VA_BITS} bits')"
       - name: Run unit and integration tests
         run: python -W error -m unittest discover -s tests -v
       - name: Verify opcode table is reproducible
@@ -90,11 +90,11 @@ jobs:
           set -euo pipefail
           [[ "$RAM_BYTES" =~ ^[0-9]+$ ]]
           [[ "$MAX_STEPS" =~ ^[0-9]+$ ]]
-          (( RAM_BYTES >= 131072 && RAM_BYTES < 4026531840 && RAM_BYTES % 8 == 0 ))
+          (( RAM_BYTES >= 131072 && RAM_BYTES < 4026531840 && RAM_BYTES % 16 == 0 ))
           (( MAX_STEPS > 0 ))
           echo "Selected Python: $PYTHON_VERSION"
           echo "Scenario: $SCENARIO"
-          echo "RAM bytes: $RAM_BYTES (minimum 131072; multiple of 8; below 4026531840)"
+          echo "RAM bytes: $RAM_BYTES (minimum 131072; multiple of 16; below 4026531840)"
           echo "Maximum steps: $MAX_STEPS"
           echo "Tracebook: $TRACE_ENABLED"
           python --version
@@ -111,7 +111,7 @@ jobs:
           case "$SCENARIO" in
             hello)
               python -m veylith boot examples/hello.s --ram "$RAM_BYTES" --max-steps "$MAX_STEPS" "${TRACE_ARGS[@]}" 2>&1 | tee runtime.log
-              grep -F "Hello from Veylith v0!" runtime.log
+              grep -F "Hello from Veylith 128-Native v1!" runtime.log
               grep -F "exit code 0" runtime.log
               ;;
             factorial)

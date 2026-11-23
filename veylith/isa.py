@@ -5,11 +5,14 @@ import sys
 WIDTH = 128
 MASK = (1 << WIDTH) - 1
 SIGN = 1 << (WIDTH - 1)
-GLYPH_BYTES = 8
-VA_BITS = 48
-NUM_VEYLS = 32
+GLYPH_BYTES = 16
+VA_BITS = 128
+NUM_VEYLS = 128
+REG_BITS = 7
+IMM_BITS = 88
+IMM_MASK = (1 << IMM_BITS) - 1
 
-# Glyph layout (64 bits): op[63:56] rd[55:51] ra[50:46] rb[45:41] reserved[40:32] imm[31:0]
+# Glyph layout (128 bits): op[127:112] rd[111:105] ra[104:98] rb[97:91] reserved[90:88] imm[87:0]
 # Which fields a format uses; every unused field must be zero or the glyph is illegal.
 FORMATS = {
     "rrr": ("rd", "ra", "rb"),
@@ -30,7 +33,7 @@ FORMATS = {
 _T = [
     # name, code, fmt, summary
     ("nop", 0x00, "none", "no operation"),
-    ("halt", 0x01, "none", "stop the machine (kernel only); exit code = low 64 bits of v1"),
+    ("halt", 0x01, "none", "stop the machine (kernel only); exit code = v1"),
     ("add", 0x10, "rrr", "rd = ra + rb (wraps mod 2^128)"),
     ("sub", 0x11, "rrr", "rd = ra - rb (wraps)"),
     ("mul", 0x12, "rrr", "rd = low 128 bits of ra * rb"),
@@ -58,7 +61,7 @@ _T = [
     ("sltu", 0x29, "rrr", "rd = 1 if ra < rb unsigned else 0"),
     ("seq", 0x2A, "rrr", "rd = 1 if ra == rb else 0"),
     ("ldk", 0x30, "ri", "rd = sext(imm)"),
-    ("shk", 0x31, "ri", "rd = (rd << 32) | zext(imm)"),
+    ("shk", 0x31, "ri", "rd = ((rd & ((1 << 40) - 1)) << 88) | zext(imm[87:0])"),
     ("clz", 0x32, "rr", "rd = count of leading zero bits of ra (128 for zero)"),
     ("popc", 0x33, "rr", "rd = number of set bits of ra"),
     ("lb", 0x40, "ld", "rd = zext(mem8[ra + sext(imm)])"),
@@ -75,16 +78,16 @@ _T = [
     ("sw", 0x52, "st", "mem32[...] = rb"),
     ("sd", 0x53, "st", "mem64[...] = rb"),
     ("sq", 0x54, "st", "mem128[...] = rb"),
-    ("jmp", 0x60, "j", "pc = pc + 8 * sext(imm)"),
-    ("jal", 0x61, "jal", "rd = pc + 8; pc = pc + 8 * sext(imm)"),
-    ("jr", 0x62, "jr", "t = ra + sext(imm); rd = pc + 8; pc = t"),
-    ("beq", 0x63, "br", "if ra == rb: pc = pc + 8 * sext(imm)"),
+    ("jmp", 0x60, "j", "pc = pc + 16 * sext(imm)"),
+    ("jal", 0x61, "jal", "rd = pc + 16; pc = pc + 16 * sext(imm)"),
+    ("jr", 0x62, "jr", "t = ra + sext(imm); rd = pc + 16; pc = t"),
+    ("beq", 0x63, "br", "if ra == rb: pc = pc + 16 * sext(imm)"),
     ("bne", 0x64, "br", "if ra != rb: branch"),
     ("blt", 0x65, "br", "if ra < rb signed: branch"),
     ("bge", 0x66, "br", "if ra >= rb signed: branch"),
     ("bltu", 0x67, "br", "if ra < rb unsigned: branch"),
     ("bgeu", 0x68, "br", "if ra >= rb unsigned: branch"),
-    ("sys", 0x70, "j", "trap SYSCALL; tval = imm; tpc = pc + 8"),
+    ("sys", 0x70, "j", "trap SYSCALL; tval = imm; tpc = pc + 16"),
     ("tret", 0x71, "none", "kernel only: priv = tpriv; pc = tpc"),
     ("csrr", 0x72, "csrr", "kernel only: rd = csr[imm]"),
     ("csrw", 0x73, "csrw", "kernel only: csr[imm] = ra"),
@@ -100,7 +103,7 @@ CSR_READONLY = {0, 8}
 CAUSES = {1: "ILLEGAL", 2: "PRIVILEGE", 3: "DIVZERO", 4: "MISALIGN", 5: "ACCESS", 6: "SYSCALL"}
 CAUSE_ILLEGAL, CAUSE_PRIVILEGE, CAUSE_DIVZERO, CAUSE_MISALIGN, CAUSE_ACCESS, CAUSE_SYSCALL = 1, 2, 3, 4, 5, 6
 
-REG_ALIASES = {"zero": 0, "sp": 30, "lr": 31}
+REG_ALIASES = {"zero": 0, "sp": 126, "lr": 127}
 
 
 def sext(value, bits):
@@ -117,38 +120,39 @@ def encode(name, rd=0, ra=0, rb=0, imm=0):
     code, fmt, _ = BY_NAME[name]
     used = FORMATS[fmt]
     vals = {"rd": rd, "ra": ra, "rb": rb, "imm": imm}
-    for f, v in vals.items():
-        if f not in used and v != 0:
-            raise ValueError(f"{name}: field {f} is not used by this glyph")
-    for f in ("rd", "ra", "rb"):
-        if not 0 <= vals[f] < NUM_VEYLS:
-            raise ValueError(f"{name}: register out of range")
-    if not -(1 << 31) <= imm < (1 << 32):
-        raise ValueError(f"{name}: immediate {imm} does not fit 32 bits")
-    return (code << 56) | (rd << 51) | (ra << 46) | (rb << 41) | (imm & 0xFFFFFFFF)
+    for field, value in vals.items():
+        if field not in used and value != 0:
+            raise ValueError(f"{name}: field {field} is not used by this glyph")
+    for field in ("rd", "ra", "rb"):
+        if not 0 <= vals[field] < NUM_VEYLS:
+            raise ValueError(f"{name}: register out of range (v0..v127)")
+    if not -(1 << (IMM_BITS - 1)) <= imm < (1 << IMM_BITS):
+        raise ValueError(f"{name}: immediate does not fit {IMM_BITS} bits")
+    return (code << 112) | (rd << 105) | (ra << 98) | (rb << 91) | (imm & IMM_MASK)
 
 
 def decode(word):
-    """Return (name, rd, ra, rb, imm_u32) or None if the glyph is illegal."""
-    code = word >> 56
+    if not 0 <= word <= MASK:
+        return None
+    code = (word >> 112) & 0xFFFF
     if code not in BY_CODE:
         return None
     name, fmt, _ = BY_CODE[code]
-    rd, ra, rb = (word >> 51) & 31, (word >> 46) & 31, (word >> 41) & 31
-    if (word >> 32) & 0x1FF:
+    rd, ra, rb = (word >> 105) & 0x7F, (word >> 98) & 0x7F, (word >> 91) & 0x7F
+    if (word >> 88) & 0x7:
         return None
-    imm = word & 0xFFFFFFFF
+    imm = word & IMM_MASK
     used = FORMATS[fmt]
-    for f, v in (("rd", rd), ("ra", ra), ("rb", rb), ("imm", imm)):
-        if f not in used and v != 0:
+    for field, value in (("rd", rd), ("ra", ra), ("rb", rb), ("imm", imm)):
+        if field not in used and value != 0:
             return None
     return name, rd, ra, rb, imm
 
 
 def table_json():
     return json.dumps({
-        "architecture": "Veylith", "profile": "v0", "glyph_bits": 64,
-        "fields": {"op": "63:56", "rd": "55:51", "ra": "50:46", "rb": "45:41", "reserved": "40:32 (must be 0)", "imm": "31:0"},
+        "architecture": "Veylith", "profile": "128-native-v1", "register_width_bits": WIDTH, "register_count": NUM_VEYLS, "virtual_address_bits": VA_BITS, "glyph_bits": 128,
+        "fields": {"op": "127:112", "rd": "111:105", "ra": "104:98", "rb": "97:91", "reserved": "90:88 (must be 0)", "imm": "87:0 (88-bit immediate)"},
         "glyphs": [{"name": n, "opcode": f"0x{c:02X}", "format": f, "summary": s} for n, c, f, s in _T],
         "csrs": CSRS, "causes": {str(k): v for k, v in CAUSES.items()},
     }, indent=2) + "\n"

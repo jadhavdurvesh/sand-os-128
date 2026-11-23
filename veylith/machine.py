@@ -3,9 +3,9 @@ from . import isa
 from .isa import MASK, to_signed, sext, CAUSE_ILLEGAL, CAUSE_PRIVILEGE, CAUSE_DIVZERO, CAUSE_MISALIGN, CAUSE_ACCESS, CAUSE_SYSCALL
 from . import image as imagemod
 
-CONSOLE_ADDR = 0xF0000000
+CONSOLE_ADDR = (1 << 128) - 0x10000
 VA_LIMIT = 1 << isa.VA_BITS
-TRACE_VERSION = 1
+TRACE_VERSION = 2
 
 
 class Trap(Exception):
@@ -15,8 +15,8 @@ class Trap(Exception):
 
 class Machine:
     def __init__(self, ram_size=1 << 20):
-        if ram_size <= 0 or ram_size % 8 or ram_size >= CONSOLE_ADDR:
-            raise ValueError("ram_size must be a positive multiple of 8 below the console window")
+        if ram_size <= 0 or ram_size % 16 or ram_size >= CONSOLE_ADDR:
+            raise ValueError("ram_size must be a positive multiple of 16 and below the console window")
         self.ram = bytearray(ram_size)
         self.reset()
 
@@ -49,11 +49,13 @@ class Machine:
     # ---- memory -----------------------------------------------------------
     def _check(self, addr, size, kind):
         """kind: 'r', 'w' or 'x'. Raises Trap. Priority: ACCESS(canonical) > MISALIGN > ACCESS(region)."""
-        if addr >= VA_LIMIT:
+        if not 0 <= addr < VA_LIMIT:
             raise Trap(CAUSE_ACCESS, addr)
         if addr % size:
             raise Trap(CAUSE_MISALIGN, addr)
         end = addr + size
+        if end > VA_LIMIT:
+            raise Trap(CAUSE_ACCESS, addr)
         if self.priv == 1:
             base, lim = self.csr[6], self.csr[7]
             if not (base <= addr and end <= base + lim):
@@ -113,10 +115,10 @@ class Machine:
     def _fetch(self, pc):
         if pc >= VA_LIMIT:
             raise Trap(CAUSE_ACCESS, pc)
-        if pc % 8:
+        if pc % isa.GLYPH_BYTES:
             raise Trap(CAUSE_MISALIGN, pc)
-        self._check(pc, 8, "x")
-        return int.from_bytes(self.ram[pc:pc + 8], "little")
+        self._check(pc, isa.GLYPH_BYTES, "x")
+        return int.from_bytes(self.ram[pc:pc + isa.GLYPH_BYTES], "little")
 
     def _enter_trap(self, t):
         c = self.csr
@@ -132,8 +134,8 @@ class Machine:
         name, rd, ra, rb, imm = dec
         v = self.v
         a, b = v[ra], v[rb]
-        simm = sext(imm, 32) & MASK
-        nxt = (pc + 8) & MASK
+        simm = sext(imm, isa.IMM_BITS) & MASK
+        nxt = (pc + isa.GLYPH_BYTES) & MASK
         newpc = nxt
         if name == "nop":
             pass
@@ -147,7 +149,7 @@ class Machine:
         elif name == "ldk":
             self._write(rd, simm)
         elif name == "shk":
-            self._write(rd, (v[rd] << 32) | imm)
+            self._write(rd, ((v[rd] & ((1 << 40) - 1)) << isa.IMM_BITS) | imm
         elif name == "clz":
             self._write(rd, 128 - a.bit_length())
         elif name == "popc":
@@ -159,16 +161,16 @@ class Machine:
         elif name in _STORES:
             self._store((a + simm) & MASK, _STORES[name], b)
         elif name == "jmp":
-            newpc = (pc + 8 * to_signed(simm)) & MASK
+            newpc = (pc + isa.GLYPH_BYTES * to_signed(simm)) & MASK
         elif name == "jal":
-            newpc = (pc + 8 * to_signed(simm)) & MASK
+            newpc = (pc + isa.GLYPH_BYTES * to_signed(simm)) & MASK
             self._write(rd, nxt)
         elif name == "jr":
             newpc = (a + simm) & MASK
             self._write(rd, nxt)
         elif name in _BRANCH:
             if _BRANCH[name](a, b):
-                newpc = (pc + 8 * to_signed(simm)) & MASK
+                newpc = (pc + isa.GLYPH_BYTES * to_signed(simm)) & MASK
         elif name == "sys":
             raise Trap(CAUSE_SYSCALL, imm, tpc=nxt)
         elif name == "tret":
@@ -205,7 +207,7 @@ class Machine:
     # ---- Tracebook --------------------------------------------------------
     def _record(self, pc, raw, name, trap, before):
         rec = {"tracebook": TRACE_VERSION, "n": self.cycles, "pc": f"0x{pc:x}"}
-        rec["raw"] = None if raw is None else f"0x{raw:016x}"
+        rec["raw"] = None if raw is None else f"0x{raw:032x}"
         rec["op"] = name
         rec["regs"] = {f"v{i}": f"0x{self.v[i]:x}" for i in range(isa.NUM_VEYLS) if self.v[i] != before[i]}
         rec["mem"] = [{"addr": f"0x{a:x}", "size": s, "value": f"0x{x:x}"} for a, s, x in self._mem_log]
