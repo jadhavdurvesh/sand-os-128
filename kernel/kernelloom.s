@@ -16,7 +16,7 @@
 _start:
     la   v1, trap_entry
     csrw tvec, v1
-    li   v127, 0x6000
+    li   v127, USER_BASE + USER_SIZE
     la   v1, banner
     call puts
     li   v1, USER_BASE
