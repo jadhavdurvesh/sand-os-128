@@ -81,6 +81,37 @@ python3 -m unittest discover -s tests         # 50 tests
 └── README.md
 ```
 
+
+## Run Veylith locally
+
+Requires Python 3.11+ and no third-party packages.
+
+```bash
+# Print every architectural and machine parameter
+python -m veylith info
+
+# Boot the simple user-mode hello program under Kernelloom
+python -m veylith boot examples/hello.s
+
+# Run the 128-bit arithmetic demonstration
+python -m veylith boot examples/factorial.s
+
+# Exercise the user/kernel memory protection boundary
+python -m veylith boot examples/badptr.s
+
+# Configure RAM, execution budget, and a JSONL instruction trace
+python -m veylith boot examples/factorial.s --ram 1048576 --max-steps 5000000 --trace tracebook.jsonl
+
+# Run the full test suite
+python -W error -m unittest discover -s tests -v
+```
+
+## GitHub Actions
+
+The **Veylith CI** workflow runs the conformance suite on Python 3.11, 3.12, and 3.13, checks that the machine-readable opcode table matches the implementation, and boots a user program under Kernelloom.
+
+Use **Actions → Veylith CI → Run workflow** to select a scenario and runtime parameters. The workflow prints the selected parameters and the complete Veylith machine profile. Optional Tracebook output is uploaded as a workflow artifact.
+
 ## Development status
 
 | Area | Status |
