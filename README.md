@@ -158,3 +158,6 @@ No license has been selected yet. Until a license file is added, all rights are 
 ### SAND Desktop graphics milestone
 
 Kernelloom now draws an initial 1280×720 desktop scene into a guest-controlled framebuffer using the Veylith graphics MMIO device. The browser displays that framebuffer after guest execution. This first static graphics milestone does not yet include a window manager, text rendering, input events, or interactive applications.
+
+
+The initial SAND Desktop shell now includes guest-rendered bitmap typography and labelled navigation/status surfaces. It remains a static guest-rendered shell pending input, window management, and process support.

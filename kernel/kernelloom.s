@@ -97,7 +97,102 @@ desktop_init:
     li v4, 190
     li v5, 0xFF49382B
     call gpu_rect
+    li v1, 54
+    li v2, 18
+    la v3, text_brand
+    li v4, 5
+    li v5, 0xFFE8EEF6
+    call gpu_text
+    li v1, 24
+    li v2, 95
+    la v3, text_home
+    li v4, 4
+    li v5, 0xFFDDE8F5
+    call gpu_text
+    li v1, 24
+    li v2, 160
+    la v3, text_files
+    li v4, 5
+    li v5, 0xFFB9C9DA
+    call gpu_text
+    li v1, 24
+    li v2, 225
+    la v3, text_terminal
+    li v4, 8
+    li v5, 0xFFB9C9DA
+    call gpu_text
+    li v1, 24
+    li v2, 290
+    la v3, text_settings
+    li v4, 8
+    li v5, 0xFFB9C9DA
+    call gpu_text
+    li v1, 330
+    li v2, 103
+    la v3, text_workspace
+    li v4, 9
+    li v5, 0xFFEAF0F7
+    call gpu_text
+    li v1, 330
+    li v2, 155
+    la v3, text_welcome
+    li v4, 12
+    li v5, 0xFFEAF0F7
+    call gpu_text
+    li v1, 330
+    li v2, 195
+    la v3, text_ready
+    li v4, 25
+    li v5, 0xFFAFC1D5
+    call gpu_text
+    li v1, 340
+    li v2, 285
+    la v3, text_files_card
+    li v4, 5
+    li v5, 0xFFEAF0F7
+    call gpu_text
+    li v1, 340
+    li v2, 320
+    la v3, text_files_count
+    li v4, 9
+    li v5, 0xFFB9C9DA
+    call gpu_text
+    li v1, 630
+    li v2, 285
+    la v3, text_system_card
+    li v4, 6
+    li v5, 0xFFEAF0F7
+    call gpu_text
+    li v1, 630
+    li v2, 320
+    la v3, text_system_ok
+    li v4, 10
+    li v5, 0xFFB9C9DA
+    call gpu_text
+    li v1, 54
+    li v2, 674
+    la v3, text_launcher
+    li v4, 5
+    li v5, 0xFFEAF0F7
+    call gpu_text
+    li v1, 950
+    li v2, 674
+    la v3, text_clock
+    li v4, 16
+    li v5, 0xFFEAF0F7
+    call gpu_text
     lq v128, [v0 + 0x5000]
+    ret
+
+gpu_text:
+    li v6, GPU
+    sq [v6 + 0], v1
+    sq [v6 + 16], v2
+    sq [v6 + 32], v3
+    sq [v6 + 48], v4
+    sq [v6 + 64], v5
+    li v7, 2
+    sq [v6 + 80], v7
     ret
 
 gpu_rect:
@@ -485,3 +580,19 @@ banner:    .asciz "[kernelloom] Veylith 128-Native v1 booting user program\n"
 msg_exit:  .asciz "[kernelloom] user exit "
 msg_fault: .asciz "[kernelloom] user fault cause="
 msg_addr:  .asciz " tval="
+
+; SAND Desktop UI labels rendered by the guest graphics device.
+text_brand:       .ascii "SAND "
+text_home:        .ascii "HOME"
+text_files:       .ascii "FILES"
+text_terminal:    .ascii "TERMINAL"
+text_settings:    .ascii "SETTINGS"
+text_workspace:   .ascii "WORKSPACE"
+text_welcome:     .ascii "WELCOME BACK"
+text_ready:       .ascii "YOUR SYSTEM IS READY TO USE"
+text_files_card:  .ascii "FILES"
+text_files_count: .ascii "12 ITEMS"
+text_system_card: .ascii "SYSTEM"
+text_system_ok:   .ascii "ALL SYSTEMS"
+text_launcher:    .ascii "START"
+text_clock:       .ascii "23 NOV 2026 19"

@@ -49,3 +49,8 @@ The test checks both return values from user mode. Multi-task scheduling, task c
 ## SAND Desktop framebuffer
 
 The hosted Veylith machine exposes a 1280×720, 32-bit RGBA framebuffer through a kernel-only memory-mapped graphics command block at `0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFE000`. Six 128-bit registers specify X, Y, width, height, color, and command (1 = fill rectangle). Kernelloom draws the initial desktop surfaces from guest assembly; the browser presents the framebuffer returned by the WebAssembly machine. This is a static guest-rendered desktop scene, not yet an interactive desktop: window management, mouse/keyboard input, text rendering, and applications remain future work.
+
+
+## SAND Desktop typography
+
+The Veylith graphics MMIO device supports command 2 for guest-memory text rendering. Kernelloom supplies guest RAM string pointers and text positions; the device rasterizes a built-in 5×7 uppercase bitmap font at 2× scale into the RGBA framebuffer. The first labelled shell includes navigation labels, a workspace welcome area, status cards, and a taskbar label. This remains a static desktop shell; input, interactive window management, and persistent applications are not yet implemented.
