@@ -1,6 +1,6 @@
 """Veylith 128-Native v1 command-line tools."""
 import argparse,json,sys
-from . import asm,image,isa,VERSION
+from . import asm,image,isa,disk as diskmod,VERSION
 from .machine import Machine,CONSOLE_ADDR
 def positive_int(value):
     try:n=int(value,0)
@@ -23,6 +23,7 @@ def main(argv=None):
     r=sub.add_parser("run");r.add_argument("images",nargs="+");r.add_argument("--ram",type=positive_int,default=1<<20);r.add_argument("--max-steps",type=positive_int,default=5_000_000);r.add_argument("--trace")
     b=sub.add_parser("boot");b.add_argument("user",nargs="?",default="examples/factorial.s");b.add_argument("--kernel",default="kernel/kernelloom.s");b.add_argument("--ram",type=positive_int,default=1<<20);b.add_argument("--max-steps",type=positive_int,default=5_000_000);b.add_argument("--trace")
     i=sub.add_parser("info");i.add_argument("--ram",type=positive_int,default=1<<20);i.add_argument("--max-steps",type=positive_int,default=5_000_000);i.add_argument("--json",action="store_true")
+    k=sub.add_parser("disk",help="build a bootable Veylith virtual-machine disk image");k.add_argument("--kernel",default="kernel/kernelloom.s");k.add_argument("--user",default="examples/hello.s");k.add_argument("-o","--output",default="build/SAND-128-Veylith.img");k.add_argument("--size",type=positive_int,default=2<<20)
     sub.add_parser("opcodes");args=p.parse_args(argv)
     try:
         if args.cmd=="asm":
@@ -34,6 +35,12 @@ def main(argv=None):
             return 0
         if args.cmd=="opcodes":sys.stdout.write(isa.table_json());return 0
         if args.cmd=="info":print_profile(args.ram,args.max_steps,args.json);return 0
+        if args.cmd=="disk":
+            with open(args.kernel,encoding="utf-8") as kf,open(args.user,encoding="utf-8") as uf: blob=diskmod.build(kf.read(),uf.read(),args.size)
+            import os
+            os.makedirs(os.path.dirname(args.output) or ".",exist_ok=True)
+            with open(args.output,"wb") as f:f.write(blob)
+            print(f"[disk] wrote {len(blob)} bytes to {args.output}; boot profile=128-native-v1",file=sys.stderr);return 0
         if args.cmd=="boot":
             with open(args.kernel) as k,open(args.user) as u:blobs=[asm.assemble(k.read()),asm.assemble(u.read())]
             return execute(blobs,args.ram,args.max_steps,args.trace,"boot:"+args.user)
