@@ -54,3 +54,8 @@ The hosted Veylith machine exposes a 1280×720, 32-bit RGBA framebuffer through 
 ## SAND Desktop typography
 
 The Veylith graphics MMIO device supports command 2 for guest-memory text rendering. Kernelloom supplies guest RAM string pointers and text positions; the device rasterizes a built-in 5×7 uppercase bitmap font at 2× scale into the RGBA framebuffer. The first labelled shell includes navigation labels, a workspace welcome area, status cards, and a taskbar label. This remains a static desktop shell; input, interactive window management, and persistent applications are not yet implemented.
+
+
+## Interactive browser desktop shell
+
+The WebAssembly boot page adds a browser-hosted desktop layer after a successful guest boot. It provides window focus, dragging, minimize/maximize/close controls, a launcher, taskbar, desktop shortcuts, and demo Files, Terminal, Settings, and About applications. The terminal accepts a small set of built-in demonstration commands. This is intentionally distinguished from guest-kernel functionality: pointer/keyboard events and application state currently live in the browser host, not in Veylith guest RAM. A later input-device ABI and guest-side window server will move these responsibilities into the operating system.

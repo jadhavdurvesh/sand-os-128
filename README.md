@@ -161,3 +161,10 @@ Kernelloom now draws an initial 1280×720 desktop scene into a guest-controlled 
 
 
 The initial SAND Desktop shell now includes guest-rendered bitmap typography and labelled navigation/status surfaces. It remains a static guest-rendered shell pending input, window management, and process support.
+
+
+## Interactive SAND Desktop milestone
+
+The browser-hosted desktop shell now provides draggable, focusable, minimizable, maximizable and closable application windows; a Start launcher with app search; desktop shortcuts; a taskbar and clock; and working Files, Terminal, Settings and About demo applications. Terminal commands include `help`, `ls`, `pwd`, `uname`, `whoami`, `date`, `echo`, `version`, `neofetch`, and `clear`. Keyboard shortcuts: **Ctrl+Space** opens the launcher, **Ctrl+Alt+T** opens Terminal, and **Esc** closes the launcher.
+
+**Implementation boundary:** the guest Veylith kernel still renders the framebuffer and boots normally, while this first interactive window manager and demo application layer runs in the browser host. It is not yet a guest-kernel input driver or a persistent guest filesystem.

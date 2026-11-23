@@ -4,7 +4,7 @@
 <header><div class="brand"><span class="mark">S</span><div><b>SAND-128</b><small>VEY LITH 128-NATIVE · WEB MACHINE</small></div></div><span id="status">MACHINE OFF</span></header>
 <main><section class="hero"><p class="eyebrow">VIRTUAL PLATFORM · PROFILE 128-NATIVE-V1</p><h1>Boot Veylith.</h1><p>Load a SAND-128 disk image and start Kernelloom in your browser. No Python installation or local emulator required.</p></section>
 <section class="machine"><div class="toolbar"><div><span class="led" id="led"></span><b>Veylith Machine</b><small>128-bit guest architecture</small></div><div class="actions"><button id="sample">Load sample disk</button><label class="filebutton">Open .img<input type="file" id="file" accept=".img,application/octet-stream"></label><button id="boot" class="primary" disabled>Boot</button></div></div>
-<div class="screen"><div class="screenbar"><span id="displaylabel">SAND DESKTOP · 1280 × 720</span><span id="screenstate">WAITING FOR IMAGE</span></div><canvas id="display" width="1280" height="720" aria-label="SAND-128 guest framebuffer"></canvas><div class="consolebar">KERNEL CONSOLE</div><pre id="output">SAND-128 Veylith Web Machine
+<div class="screen"><div class="screenbar"><span id="displaylabel">SAND DESKTOP · 1280 × 720</span><span id="screenstate">WAITING FOR IMAGE</span></div><canvas id="display" width="1280" height="720" aria-label="SAND-128 guest framebuffer"></canvas><div id="desktop" class="desktop-host" hidden></div><div class="consolebar">KERNEL CONSOLE</div><pre id="output">SAND-128 Veylith Web Machine
 Awaiting a SAND-128 virtual disk image (.img)...
 
 Choose "Load sample disk" or open an image from GitHub Actions.</pre></div>
@@ -13,13 +13,14 @@ Choose "Load sample disk" or open an image from GitHub Actions.</pre></div>
 <footer>SAND-128 · VEYLITH · EXPERIMENTAL SOFTWARE PLATFORM</footer></main>
 <script type="module">
 import {bootDisk} from "./runner.js";
+import {startDesktop} from "./desktop.js";
 const $=id=>document.getElementById(id);const canvas=$("display"),ctx=canvas.getContext("2d");let bytes=null,busy=false;
 function state(s,on=false){$("status").textContent=s;$("led").classList.toggle("on",on);}
 function setImage(b,name){bytes=b;$("boot").disabled=false;$("output").textContent="Disk loaded: "+name+"\\nReady to boot.";$("screenstate").textContent="IMAGE READY";state("IMAGE READY",true);}
 $("sample").onclick=async()=>{try{const r=await fetch("./downloads/SAND-128-Veylith.img");if(!r.ok)throw Error("Sample disk not found. Download the latest GitHub Actions artifact.");setImage(await r.arrayBuffer(),"SAND-128-Veylith.img");}catch(e){$("output").textContent=e.message;state("LOAD FAILED");}};
 $("file").onchange=async e=>{const f=e.target.files[0];if(f)setImage(await f.arrayBuffer(),f.name);};
 $("boot").onclick=async()=>{if(!bytes||busy)return;busy=true;$("boot").disabled=true;$("output").textContent="[Firmware] Initialising WebAssembly Veylith machine...\\n";$("screenstate").textContent="BOOTING";state("RUNNING",true);let log=[];
-try{const r=await bootDisk(bytes,s=>{log.push(s);$("output").textContent=log.join("\\n");$("output").scrollTop=$("output").scrollHeight;});$("output").textContent=log.join("\\n")+"\\n\\n[Web Machine] Guest execution returned: "+r.exitCode;if(r.framebuffer){const pixels=new Uint8ClampedArray(r.framebuffer);ctx.putImageData(new ImageData(pixels,1280,720),0,0);$("displaylabel").textContent="SAND DESKTOP · 1280 × 720 · GUEST FRAMEBUFFER";}$("screenstate").textContent="HALTED";state("HALTED",r.exitCode===0);}
+try{const r=await bootDisk(bytes,s=>{log.push(s);$("output").textContent=log.join("\\n");$("output").scrollTop=$("output").scrollHeight;});$("output").textContent=log.join("\\n")+"\\n\\n[Web Machine] Guest execution returned: "+r.exitCode;if(r.framebuffer){const pixels=new Uint8ClampedArray(r.framebuffer);ctx.putImageData(new ImageData(pixels,1280,720),0,0);$("displaylabel").textContent="SAND DESKTOP · INTERACTIVE HOSTED SHELL";$("display").hidden=true;$("desktop").hidden=false;startDesktop($("desktop"));}$("screenstate").textContent="HALTED";state("HALTED",r.exitCode===0);}
 catch(e){$("output").textContent=log.join("\\n")+"\\nBOOT ERROR: "+e.message;$("screenstate").textContent="FAULT";state("BOOT ERROR");}
 busy=false;$("boot").disabled=false;};
 </script></body></html>
