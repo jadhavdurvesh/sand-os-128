@@ -90,11 +90,11 @@ jobs:
           set -euo pipefail
           [[ "$RAM_BYTES" =~ ^[0-9]+$ ]]
           [[ "$MAX_STEPS" =~ ^[0-9]+$ ]]
-          (( RAM_BYTES > 0 && RAM_BYTES % 8 == 0 ))
+          (( RAM_BYTES >= 131072 && RAM_BYTES < 4026531840 && RAM_BYTES % 8 == 0 ))
           (( MAX_STEPS > 0 ))
           echo "Selected Python: $PYTHON_VERSION"
           echo "Scenario: $SCENARIO"
-          echo "RAM bytes: $RAM_BYTES"
+          echo "RAM bytes: $RAM_BYTES (minimum 131072; multiple of 8; below 4026531840)"
           echo "Maximum steps: $MAX_STEPS"
           echo "Tracebook: $TRACE_ENABLED"
           python --version
