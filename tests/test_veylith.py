@@ -170,6 +170,23 @@ class Sigil(unittest.TestCase):
             self.assertEqual(trap(self.KEY+self.MINT+f"li v6, {rb}\ncnarrow v7, v4, v6")[0],isa.CAUSE_CAPABILITY,hex(rb))
         self.assertEqual(trap(self.KEY+self.MINT+f"li v6, {3|5<<8}\ncnarrow v7, v4, v6\ncnarrow v8, v7, v6")[0],isa.CAUSE_CAPABILITY)   # the narrowed cap lost NARROW
         self.assertEqual(trap(self.KEY+self.MINT+f"li v6, {7|7<<8}\ncnarrow v7, v4, v6\nli v6, {1|8<<8}\ncnarrow v8, v7, v6")[0],isa.CAUSE_CAPABILITY)   # cannot grow
+    def test_mac_is_siphash24_reference_vector(self):
+        from veylith.machine import siphash24
+        key=int.from_bytes(bytes(range(16)),"little")
+        self.assertEqual(siphash24(key,bytes(range(15))),0xa129ca6149be45e5)       # official SipHash-2-4 test vector (Aumasson and Bernstein)
+        self.assertEqual(siphash24(key,b""),0x726fdb47dd0e0e31)
+    def test_sealed_capability_is_an_opaque_token(self):
+        m=run(self.KEY+self.MINT+"cseal v5, v4\ncinfo v6, v5\nhalt")
+        self.assertEqual(m.v[6],(1<<127)|(0x87<<80)|(7<<72)|0x9000)
+        for src in ("clb v7, [v5 + 0]","csb [v5 + 0], v0","li v6, 5\ncnarrow v7, v5, v6"):
+            self.assertEqual(trap(self.KEY+self.MINT+"cseal v5, v4\n"+src)[0],isa.CAUSE_CAPABILITY,src)
+        self.assertEqual(trap(self.KEY+"li v4, 5\ncseal v5, v4")[0],isa.CAUSE_CAPABILITY)        # cannot seal a forgery
+    def test_only_the_kernel_can_unseal(self):
+        m=run(self.KEY+self.MINT+"cseal v5, v4\ncunseal v6, v5\nhalt");self.assertEqual(m.v[6],m.v[4])
+        self.assertEqual(trap(self.KEY+self.MINT+"cunseal v6, v4")[0],isa.CAUSE_CAPABILITY)      # not sealed
+        src=Timer.PRE+"tret\n.org 0x4000\ncunseal v6, v5\nhalt\nhandler:\ncsrr v121, tcause\nhalt"
+        pre="li v1, 0x77\ncsrw ckey, v1\nli v2, 0x4800\nli v3, 0x0707\ncmint v4, v2, v3\ncseal v5, v4\n"
+        self.assertEqual(run(src.replace("tret",pre+"tret",1),steps=1000).v[121],isa.CAUSE_PRIVILEGE)
     def test_only_the_kernel_can_mint(self):
         src=Timer.PRE+"tret\n.org 0x4000\nli v2, 0x4000\nli v3, 0x0707\ncmint v4, v2, v3\nhalt\nhandler:\ncsrr v121, tcause\nhalt"
         self.assertEqual(run(src,steps=1000).v[121],isa.CAUSE_PRIVILEGE)

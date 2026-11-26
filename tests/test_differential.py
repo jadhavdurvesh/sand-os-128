@@ -49,6 +49,8 @@ def program(seed, length=220):
             if j < 0.3:
                 rb = rng.randrange(8) | rng.randrange(0, 10) << 8 | rng.randrange(0, 256, 1 << rng.randrange(0, 6)) << 16
                 L += [f"li v13, {rb}", f"cnarrow {rng.choice([cr(), reg()])}, {cr()}, v13"]
+            elif j < 0.37:
+                L.append(f"{rng.choice(['cseal', 'cunseal'])} {rng.choice([cr(), reg()])}, {rng.choice([cr(), reg()])}")
             elif j < 0.45:
                 L.append(f"cinfo {reg()}, {rng.choice([cr(), reg()])}")
             elif j < 0.8:

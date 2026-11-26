@@ -410,6 +410,18 @@
       "opcode": "0x86",
       "format": "st",
       "summary": "mem128[base(ra) + imm] = rb through sigil ra"
+    },
+    {
+      "name": "cseal",
+      "opcode": "0x87",
+      "format": "rr",
+      "summary": "rd = ra with the SEALED bit (perm 0x80) set: an opaque token that cannot load, store or narrow"
+    },
+    {
+      "name": "cunseal",
+      "opcode": "0x88",
+      "format": "rr",
+      "summary": "kernel only: rd = ra with SEALED cleared; CAPABILITY trap if ra is not a valid sealed sigil"
     }
   ],
   "csrs": {

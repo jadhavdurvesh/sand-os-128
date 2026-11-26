@@ -1,6 +1,6 @@
 # 18 — Sigil capabilities (Veylith profile addendum)
 
-**Status:** Implemented in the Python and C machines and in Kernelloom. Experimental; the MAC is a stand-in, not a vetted cipher.
+**Status:** Implemented in the Python and C machines and in Kernelloom. Experimental; the MAC is SipHash-2-4, a published keyed PRF, truncated to 40 bits; the hardware latency of computing it is not modelled.
 
 ## 1. The idea
 
@@ -27,7 +27,7 @@ A **Sigil** is a complete memory capability that fits in *one* 128-bit register 
 | CSR 12 `cmode` | Non-zero = **capability mode** for user code: every raw load/store traps `CAPABILITY`; only `c*` accesses reach memory. |
 | Cause 8 `CAPABILITY` | `tval` = the offending capability (or the raw effective address in capability mode). |
 
-`F` (stand-in PRF): `h = body ^ key; 4 times: h = h * K; h ^= h >> 59; h = h + key + round`; MAC = `h >> 88`, with `K = 0x9E3779B97F4A7C15F39CC0605CEDC835`. Only uses 128-bit multiply, xor, shift and add, so both machines implement it identically.
+`F` = SipHash-2-4 (Aumasson and Bernstein, 2012) with the 128-bit `ckey` as key over the 88-bit body as 11 little-endian bytes; the MAC is the top 40 bits of the 64-bit tag. The implementation is checked against the official test vectors (`test_mac_is_siphash24_reference_vector`) and both machines agree on it under differential fuzzing.
 
 ## 3. Kernelloom integration (syscalls 10-12)
 
@@ -54,4 +54,9 @@ A **Sigil** is a complete memory capability that fits in *one* 128-bit register 
 
 ## 6. Limits
 
-Stand-in MAC (not cryptographically vetted; a real design needs a block cipher or MAC and a latency study); 40-bit tag means about 2^39 expected online guesses, so the kernel must punish a failed use (Kernelloom halts); constant boot key; no per-object revocation; power-of-two regions waste memory; the MAC check latency is unmodelled; no sealed/entry (call-gate) capabilities; no paging interaction defined.
+SipHash is a vetted short-input PRF, but truncating it to 40 bits is our design choice and its hardware latency is unstudied; 40-bit tag means about 2^39 expected online guesses, so the kernel must punish a failed use (Kernelloom halts); constant boot key; no per-object revocation; power-of-two regions waste memory; the MAC check latency is unmodelled; no sealed/entry (call-gate) capabilities; no paging interaction defined.
+
+
+## Sealed capabilities
+
+`cseal rd, ra` sets perm bit 0x80 (SEALED) on a valid capability and re-MACs it. A sealed capability is an opaque token: it can be copied, stored and sent in a mailbox, but loads, stores and `cnarrow` through it trap (cause 8). `cunseal rd, ra` is kernel-only and clears the bit, so only a trusted service can turn a token it was handed back into authority (`cunseal` on an unsealed or invalid value traps). This gives handle-style capabilities without a separate object table. It is not yet a full call gate: there is no entry-point binding, and the kernel has no `unseal` syscall yet.

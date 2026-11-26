@@ -81,7 +81,7 @@ python3 -m veylith boot examples/preempt.s    # two spinning tasks, no yield: on
 python3 -m veylith asm prog.s -o prog.vyl     # assemble
 python3 -m veylith dis prog.vyl               # disassemble
 python3 -m veylith run kernel.vyl user.vyl --trace trace.jsonl
-python3 -m unittest discover -s tests         # 56 tests
+python3 -m unittest discover -s tests         # 59 tests
 ```
 
 ## Repository layout

@@ -132,7 +132,7 @@ sys 0"""
     R["preemption"] = {"total_glyphs": m.cycles, "boot_glyphs_before_first_user_glyph": first_user, "timer_traps": len(runs.get("TIMER", [])),
                        "kernel_glyphs_per_timer_trap": avg(runs.get("TIMER", [])), "quantum_glyphs": 3000,
                        "overhead_fraction": round(avg(runs.get("TIMER", [])) / (3000 + avg(runs.get("TIMER", []))), 3)}
-    # 4b. Sigil capabilities: access cost, forgery resistance, and avalanche quality of the stand-in MAC
+    # 4b. Sigil capabilities: access cost, forgery resistance, and avalanche quality of the MAC
     import random
     from veylith.machine import sigil_mac, sigil_parse, sigil_make
     key = 0x1234567890ABCDEF1234567890ABCDEF

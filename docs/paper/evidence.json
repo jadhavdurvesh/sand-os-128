@@ -1,6 +1,6 @@
 {
   "unit": {
-    "tests": 56,
+    "tests": 59,
     "passed": true,
     "skipped": 0
   },
@@ -8,7 +8,7 @@
     "programs": 3000,
     "passed": true,
     "divergences": 0,
-    "seconds": 109.9,
+    "seconds": 111.1,
     "machines": "Python big-integer reference vs C unsigned __int128",
     "instructions_per_program": "about 634 retired Glyphs on average"
   },
@@ -48,13 +48,13 @@
       "random_guesses_tried": 300000,
       "random_guesses_accepted": 0,
       "expected_forgery_probability": "2^-40 per attempt",
-      "avalanche_mean_mac_bits_flipped": 19.98,
+      "avalanche_mean_mac_bits_flipped": 19.99,
       "avalanche_ideal": 20.0
     },
     "images": {
       "kernel_image_bytes": 20908,
       "kernel_syscalls": 12,
-      "veylith_opcodes": 66
+      "veylith_opcodes": 68
     }
   }
 }

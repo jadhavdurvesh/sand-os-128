@@ -99,6 +99,8 @@ _T = [
     ("clq", 0x84, "ld", "rd = mem128[base(ra) + imm] through sigil ra"),
     ("csb", 0x85, "st", "mem8[base(ra) + imm] = rb through sigil ra: needs WRITE"),
     ("csq", 0x86, "st", "mem128[base(ra) + imm] = rb through sigil ra"),
+    ("cseal", 0x87, "rr", "rd = ra with the SEALED bit (perm 0x80) set: an opaque token that cannot load, store or narrow"),
+    ("cunseal", 0x88, "rr", "kernel only: rd = ra with SEALED cleared; CAPABILITY trap if ra is not a valid sealed sigil"),
 ]
 BY_NAME = {n: (c, f, s) for n, c, f, s in _T}
 BY_CODE = {c: (n, f, s) for n, c, f, s in _T}

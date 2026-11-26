@@ -16,17 +16,46 @@ GPU_FONT = {"0":[14,17,19,21,25,17,14],"1":[4,12,4,4,4,4,14],"2":[14,17,1,2,4,8,
 # [127:88] MAC (40) | [87:80] perms (bit0 READ, bit1 WRITE, bit2 NARROW) | [79:72] exp (region = 2**exp bytes) | [71:0] base (aligned to 2**exp)
 SIGIL_K = 0x9E3779B97F4A7C15F39CC0605CEDC835
 SIGIL_BODY = (1 << 88) - 1
-SIGIL_PERMS = 7
+SIGIL_PERMS = 0x87
+SIGIL_SEALED = 0x80
+
+
+def _rotl(x, b):
+    return ((x << b) | (x >> (64 - b))) & 0xFFFFFFFFFFFFFFFF
+
+
+def siphash24(key, data):
+    """SipHash-2-4 (Aumasson and Bernstein, 2012) with a 128-bit key; returns the 64-bit tag."""
+    M = 0xFFFFFFFFFFFFFFFF
+    k0, k1 = key & M, (key >> 64) & M
+    v0, v1 = k0 ^ 0x736F6D6570736575, k1 ^ 0x646F72616E646F6D
+    v2, v3 = k0 ^ 0x6C7967656E657261, k1 ^ 0x7465646279746573
+
+    def rnd(v0, v1, v2, v3):
+        v0 = (v0 + v1) & M; v1 = _rotl(v1, 13); v1 ^= v0; v0 = _rotl(v0, 32)
+        v2 = (v2 + v3) & M; v3 = _rotl(v3, 16); v3 ^= v2
+        v0 = (v0 + v3) & M; v3 = _rotl(v3, 21); v3 ^= v0
+        v2 = (v2 + v1) & M; v1 = _rotl(v1, 17); v1 ^= v2; v2 = _rotl(v2, 32)
+        return v0, v1, v2, v3
+    n = len(data)
+    for i in range(0, n - n % 8, 8):
+        m = int.from_bytes(data[i:i + 8], "little")
+        v3 ^= m
+        v0, v1, v2, v3 = rnd(*rnd(v0, v1, v2, v3))
+        v0 ^= m
+    m = (n << 56) | int.from_bytes(data[n - n % 8:], "little")
+    v3 ^= m
+    v0, v1, v2, v3 = rnd(*rnd(v0, v1, v2, v3))
+    v0 ^= m
+    v2 ^= 0xFF
+    for _ in range(4):
+        v0, v1, v2, v3 = rnd(v0, v1, v2, v3)
+    return v0 ^ v1 ^ v2 ^ v3
 
 
 def sigil_mac(key, body):
-    """Stand-in keyed PRF (4 rounds of multiply / xor-shift / key add). NOT claimed cryptographically secure."""
-    h = (body ^ key) & MASK
-    for k in range(4):
-        h = (h * SIGIL_K) & MASK
-        h ^= h >> 59
-        h = (h + key + k) & MASK
-    return h >> 88
+    """40-bit MAC: top 40 bits of SipHash-2-4 over the 88-bit body (11 bytes, little endian), 128-bit key."""
+    return siphash24(key, body.to_bytes(11, "little")) >> 24
 
 
 def sigil_make(key, base, perms, exp):
@@ -249,9 +278,20 @@ class Machine:
                 raise Trap(CAUSE_CAPABILITY, a)
             base, perms, exp = p
             np_, ne, off = b & 0xFF, (b >> 8) & 0xFF, b >> 16
-            if (np_ & ~perms) or not perms & 4 or ne > exp or off >= (1 << exp) or off & ((1 << ne) - 1) or off + (1 << ne) > (1 << exp):
+            if perms & SIGIL_SEALED or (np_ & ~perms) or not perms & 4 or ne > exp or off >= (1 << exp) or off & ((1 << ne) - 1) or off + (1 << ne) > (1 << exp):
                 raise Trap(CAUSE_CAPABILITY, a)
             self._write(rd, sigil_make(self.csr[11], base + off, np_, ne))
+        elif name == "cseal":
+            p = sigil_parse(self.csr[11], a)
+            if p is None:
+                raise Trap(CAUSE_CAPABILITY, a)
+            self._write(rd, sigil_make(self.csr[11], p[0], p[1] | SIGIL_SEALED, p[2]))
+        elif name == "cunseal":
+            self._need_kernel()
+            p = sigil_parse(self.csr[11], a)
+            if p is None or not p[1] & SIGIL_SEALED:
+                raise Trap(CAUSE_CAPABILITY, a)
+            self._write(rd, sigil_make(self.csr[11], p[0], p[1] & ~SIGIL_SEALED, p[2]))
         elif name == "cinfo":
             p = sigil_parse(self.csr[11], a)
             self._write(rd, 0 if p is None else (1 << 127) | (a & SIGIL_BODY))
@@ -260,7 +300,7 @@ class Machine:
             p = sigil_parse(self.csr[11], a)
             off = to_signed(simm)
             need = 1 if name in _CLOADS else 2
-            if p is None or not p[1] & need or off < 0 or off + size > (1 << p[2]):
+            if p is None or p[1] & SIGIL_SEALED or not p[1] & need or off < 0 or off + size > (1 << p[2]):
                 raise Trap(CAUSE_CAPABILITY, a)
             if name in _CLOADS:
                 self._write(rd, self._load(p[0] + off, size))
