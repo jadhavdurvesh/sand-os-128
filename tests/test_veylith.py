@@ -100,6 +100,8 @@ class Kernelloom(unittest.TestCase):
              "bad:\nli v2, 1\nli v1, 2\nsys 0\nother:\nli v128, 0x2222222222222222222222222222222\nli v1, 5\nsys 0\nli v9, 0x2222222222222222222222222222222\nbne v128, v9, bad\nli v1, 2\nli v2, 0\nsys 0\ngood: .ascii \"G\"")
         m=Machine(1<<20);m.load(asm.assemble(read("kernel/kernelloom.s")));m.load(asm.assemble(src),set_entry=False);m.run(5_000_000)
         self.assertIn("G",m.console.decode());self.assertEqual(m.exit_code,0)
+    def test_kernel_image_stays_below_its_scratch_area(self):
+        segs,_=image.unpack(asm.assemble(read("kernel/kernelloom.s")));self.assertLessEqual(max(a+len(d) for a,d in segs),0x5000)   # 0x5000 holds the link save and CURRENT
     def test_high_register_preservation(self):
         src='.org 0x10000\n_start:\nli v128, 0x123456789ABCDEF0123456789ABCDEF\nli v1, 1\nla v2, msg\nli v3, 1\nsys 0\nmv v3, v128\nli v1, 2\nli v2, 0\nsys 0\nmsg: .ascii "X"'
         m=Machine(1<<20);m.load(asm.assemble(read("kernel/kernelloom.s")));m.load(asm.assemble(src),set_entry=False);m.run(5_000_000);self.assertEqual(m.v[3],0x123456789ABCDEF0123456789ABCDEF)

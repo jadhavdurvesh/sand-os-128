@@ -50,6 +50,7 @@ The shared [SAND Numerical Systems Research (SNSR)](docs/22-sand-numerical-syste
 | [Decision register](docs/12-decision-register.md) | Open decisions and accepted design records |
 | [Originality and naming policy](docs/13-originality-and-naming-policy.md) | Rules for custom design and project terminology |
 | [Veylith 128-Native v1 base profile](docs/14-veylith-v0-spec.md) | The accepted, implemented v0 machine contract |
+| [Research status and gap analysis](docs/17-research-gap-analysis.md) | Evidence, measured costs, gaps; companion to the [draft paper](docs/paper/veylith-128.pdf) |
 | [Decision-record template](docs/templates/decision-record-template.md) | Reusable format for future architecture decisions |
 
 ## Bootable image and browser emulator
@@ -77,7 +78,7 @@ python3 -m veylith boot examples/preempt.s    # two spinning tasks, no yield: on
 python3 -m veylith asm prog.s -o prog.vyl     # assemble
 python3 -m veylith dis prog.vyl               # disassemble
 python3 -m veylith run kernel.vyl user.vyl --trace trace.jsonl
-python3 -m unittest discover -s tests         # 35 tests
+python3 -m unittest discover -s tests         # 43 tests
 ```
 
 ## Repository layout
