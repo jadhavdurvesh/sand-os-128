@@ -25,6 +25,7 @@
 .equ T_MBVAL,     80              ; one-deep 128-bit mailbox
 .equ T_FRAME,     128             ; saved copy of the 129-quad register frame
 .equ FRAMEQ,      129
+.equ QUANTUM,      3000            ; preemption slice, in retired Glyphs (timecmp = cycles + QUANTUM)
 .equ GPU,       0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFE000
 
 .org 0
@@ -37,6 +38,9 @@ _start:
     call desktop_init
     li   v1, 1
     sq   [v0 + TASKS + T_STATE], v1      ; task 1 (slot 0) is the booting program
+    csrr v1, cycles
+    addi v1, v1, QUANTUM
+    csrw timecmp, v1                 ; arm the first preemption deadline
     li   v1, USER_BASE
     csrw abase, v1
     csrw tpc, v1
@@ -351,6 +355,8 @@ trap_entry:
     sq   [v0 + FRAME + 2048], v128
     li   v127, 0x6000
     csrr v16, tcause
+    li   v17, 7
+    beq  v16, v17, timer_preempt
     li   v17, 6
     bne  v16, v17, user_fault
     li   v17, 1
@@ -408,6 +414,9 @@ sys_getcycles:
     jmp  syscall_return
 
 syscall_return:
+    csrr v17, cycles                ; every return to user mode re-arms the one-shot timer
+    addi v17, v17, QUANTUM
+    csrw timecmp, v17
     sq   [v0 + FRAME + 16], v16     ; result goes back in the saved v1
     lq   v1, [v0 + FRAME + 16]
     lq   v2, [v0 + FRAME + 32]
@@ -583,6 +592,12 @@ wake_next:
     li   v23, NTASKS
     bne  v20, v23, wake_loop
     li   v26, 1                     ; exited: nothing to save
+    jmp  schedule
+
+; Timer interrupt (cause 7): the user task is preempted between two Glyphs. Its v1 is kept as its pending result.
+timer_preempt:
+    lq   v16, [v0 + FRAME + 16]
+    li   v26, 0
     jmp  schedule
 
 sys_yield:

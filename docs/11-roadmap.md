@@ -88,7 +88,7 @@ Each extension requires a design record, specification, and tests. There is no o
 | Assembler / disassembler | Implemented for v0 |
 | Compiler backend | Not implemented |
 | Bootloader | Not implemented (the emulator loads images directly) |
-| Kernel | Kernelloom v2 implemented (cooperative threads, 128-bit messages); no paging, interrupts, preemption or filesystem |
+| Kernel | Kernelloom v2 implemented (threads, timer-interrupt preemption, 128-bit messages); no paging, device interrupts or filesystem |
 | Hardware | Not planned / not required |
 
 ## Guiding rule

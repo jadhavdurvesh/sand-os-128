@@ -73,6 +73,7 @@ python3 -m veylith boot examples/badptr.s     # a user fault caught by the kerne
 python3 -m veylith boot examples/process_info.s # getpid/getcycles syscall checks
 python3 -m veylith boot examples/threads.s    # three threads send 128-bit results to task 1
 python3 -m veylith boot examples/pingpong.s   # round-robin yield: ABABABAB
+python3 -m veylith boot examples/preempt.s    # two spinning tasks, no yield: only the timer interrupt lets them share the CPU
 python3 -m veylith asm prog.s -o prog.vyl     # assemble
 python3 -m veylith dis prog.vyl               # disassemble
 python3 -m veylith run kernel.vyl user.vyl --trace trace.jsonl
@@ -136,8 +137,9 @@ Use **Actions → Veylith CI → Run workflow** to select a scenario and runtime
 | Veylith 128-Native v1 base profile | Accepted; implemented; verified in the emulator |
 | Reference emulator | Implemented (Python, single core, deterministic, Tracebook) |
 | Assembler / disassembler / image format | Implemented |
-| Kernelloom v2 | Implemented: user mode, aperture protection, fault reporting, cooperative threads (spawn/yield/join), 128-bit message passing, deadlock detection (no preemption: there are no interrupts yet) |
-| Paging, interrupts, atomics, floating point | Not implemented |
+| Kernelloom v2 | Implemented: user mode, aperture protection, fault reporting, threads (spawn/yield/join) with timer-interrupt preemption, 128-bit message passing, deadlock detection |
+| Timer interrupt | Implemented (`timecmp`, cause 7; user mode only, one-shot) |
+| Paging, device interrupts, atomics, floating point | Not implemented |
 | Compiler, filesystem, devices beyond a console | Not implemented |
 | Hardware | Not planned |
 

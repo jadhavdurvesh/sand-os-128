@@ -103,6 +103,34 @@ class Kernelloom(unittest.TestCase):
     def test_high_register_preservation(self):
         src='.org 0x10000\n_start:\nli v128, 0x123456789ABCDEF0123456789ABCDEF\nli v1, 1\nla v2, msg\nli v3, 1\nsys 0\nmv v3, v128\nli v1, 2\nli v2, 0\nsys 0\nmsg: .ascii "X"'
         m=Machine(1<<20);m.load(asm.assemble(read("kernel/kernelloom.s")));m.load(asm.assemble(src),set_entry=False);m.run(5_000_000);self.assertEqual(m.v[3],0x123456789ABCDEF0123456789ABCDEF)
+class Timer(unittest.TestCase):
+    PRE="la v120, handler\ncsrw tvec, v120\nli v1, 0x4000\ncsrw abase, v1\ncsrw tpc, v1\nli v1, 0x1000\ncsrw alim, v1\nli v1, 1\ncsrw tpriv, v1\n"
+    def test_timer_interrupts_user_code_once(self):
+        src=self.PRE+"li v1, 100\ncsrw timecmp, v1\ntret\n.org 0x4000\nspin: jmp spin\nhandler:\ncsrr v121, tcause\ncsrr v122, tpc\ncsrr v123, timecmp\nhalt"
+        m=run(src,steps=1000);self.assertEqual((m.v[121],m.v[122],m.v[123]),(isa.CAUSE_TIMER,0x4000,0));self.assertEqual(isa.CAUSES[7],"TIMER")
+    def test_timer_never_interrupts_kernel(self):
+        m=run("la v120, handler\ncsrw tvec, v120\nli v1, 5\ncsrw timecmp, v1\nli v2, 0\nl: addi v2, v2, 1\nli v3, 300\nbne v2, v3, l\nhalt\nhandler:\nli v2, 999\nhalt",steps=5000)
+        self.assertEqual((m.stop_reason,m.v[2]),("halt",300))
+    def test_timecmp_is_128_bit_and_deadline_is_respected(self):
+        big=(1<<100)+5;m=run(f"li v1, {big}\ncsrw timecmp, v1\ncsrr v2, timecmp\nhalt");self.assertEqual(m.v[2],big)
+        src=self.PRE+f"li v1, {big}\ncsrw timecmp, v1\ntret\n.org 0x4000\nli v5, 7\nsys 1\nhandler:\ncsrr v121, tcause\nhalt"
+        self.assertEqual(run(src,steps=1000).v[121],isa.CAUSE_SYSCALL)       # a far deadline never fires
+    def test_preemption_without_yield(self):
+        m=Kernelloom.boot(Kernelloom,"examples/preempt.s");self.assertIn("preemption works: ok",m.console.decode());self.assertEqual((m.stop_reason,m.exit_code),("halt",0))
+class NativeMachine(unittest.TestCase):
+    def test_c_machine_matches_python_machine(self):
+        import shutil,subprocess,re,tempfile
+        cc=shutil.which("gcc") or shutil.which("cc")
+        if not cc:self.skipTest("no C compiler")
+        with tempfile.TemporaryDirectory() as d:
+            exe=os.path.join(d,"vvm");r=subprocess.run([cc,"-std=c11","-O2","-o",exe,"native/veylith-vm.c"],capture_output=True)
+            if r.returncode:self.skipTest("C machine did not build")
+            for ex in ("hello","factorial","native128","badptr","process_info","threads","pingpong","threadedge","threaddead","preempt"):
+                img=os.path.join(d,ex+".img");
+                with open(img,"wb") as f:f.write(disk.build(read("kernel/kernelloom.s"),read(f"examples/{ex}.s")))
+                c=subprocess.run([exe,img],capture_output=True,text=True);m=Kernelloom.boot(Kernelloom,f"examples/{ex}.s")
+                n=int(re.search(r"(\d+) Glyphs",c.stdout+c.stderr).group(1))
+                self.assertEqual(n,m.cycles,ex);self.assertEqual(m.console.decode().rstrip(),c.stdout.rstrip().replace("\r",""),ex)
 class Trace(unittest.TestCase):
     def test_trace_width(self):
         m=Machine(1<<16);m.trace=[];m.load(asm.assemble("li v100, 1\n halt"));m.run(10);self.assertEqual(len(m.trace[0]["raw"])-2,32)

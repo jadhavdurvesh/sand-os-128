@@ -98,11 +98,11 @@ BY_CODE = {c: (n, f, s) for n, c, f, s in _T}
 assert len(BY_NAME) == len(BY_CODE) == len(_T)
 
 CSRS = {"priv": 0, "tvec": 1, "tpc": 2, "tcause": 3, "tval": 4, "tpriv": 5,
-        "abase": 6, "alim": 7, "cycles": 8, "scratch": 9}
+        "abase": 6, "alim": 7, "cycles": 8, "scratch": 9, "timecmp": 10}
 CSR_READONLY = {0, 8}
 
-CAUSES = {1: "ILLEGAL", 2: "PRIVILEGE", 3: "DIVZERO", 4: "MISALIGN", 5: "ACCESS", 6: "SYSCALL"}
-CAUSE_ILLEGAL, CAUSE_PRIVILEGE, CAUSE_DIVZERO, CAUSE_MISALIGN, CAUSE_ACCESS, CAUSE_SYSCALL = 1, 2, 3, 4, 5, 6
+CAUSES = {1: "ILLEGAL", 2: "PRIVILEGE", 3: "DIVZERO", 4: "MISALIGN", 5: "ACCESS", 6: "SYSCALL", 7: "TIMER"}
+CAUSE_ILLEGAL, CAUSE_PRIVILEGE, CAUSE_DIVZERO, CAUSE_MISALIGN, CAUSE_ACCESS, CAUSE_SYSCALL, CAUSE_TIMER = 1, 2, 3, 4, 5, 6, 7
 
 REG_ALIASES = {"zero": 0, "sp": 127, "lr": 128}
 

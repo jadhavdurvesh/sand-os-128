@@ -380,7 +380,8 @@
     "abase": 6,
     "alim": 7,
     "cycles": 8,
-    "scratch": 9
+    "scratch": 9,
+    "timecmp": 10
   },
   "causes": {
     "1": "ILLEGAL",
@@ -388,6 +389,7 @@
     "3": "DIVZERO",
     "4": "MISALIGN",
     "5": "ACCESS",
-    "6": "SYSCALL"
+    "6": "SYSCALL",
+    "7": "TIMER"
   }
 }
