@@ -28,4 +28,4 @@ Both machines come from one author and one specification, so agreement catches i
 
 ## Novelty and Sigil
 
-A short prior-art search (RV128I, QEMU RV128, CHERI, Arm PAC, Amoeba, Mungi, AS/400) found no published design combining a clean-sheet all-128-bit machine, hardware-checked capabilities with bounds, and no tag memory. The Sigil mechanism ([docs/18](18-sigil-capabilities.md)) is built around that combination. The survey is not exhaustive, so this is a limited claim, not proof of novelty. Open items: a vetted MAC, sealed capabilities, per-object revocation, MAC latency, paging interaction.
+A short prior-art search (RV128I, QEMU RV128, CHERI, Arm PAC, Amoeba, Mungi, AS/400) found no published design combining a clean-sheet all-128-bit machine, hardware-checked capabilities with bounds, and no tag memory. The Sigil mechanism ([docs/18](18-sigil-capabilities.md)) is built around that combination. The survey is not exhaustive, so this is a limited claim, not proof of novelty. MAC is SipHash-2-4 truncated to 40 bits; sealed tokens exist. Open items: call gates with entry-point binding, per-object revocation, MAC latency, paging interaction.
