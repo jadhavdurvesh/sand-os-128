@@ -79,3 +79,19 @@ Trace records contain a 128-bit PC and a 32-hex-digit raw Glyph. Register values
 ## 10. Implementation boundary
 
 The Python emulator, assembler, disassembler, image format, Kernelloom, examples and CI target this profile. CI tests Python 3.11–3.13. This is a deterministic sequential single-core software model, not cycle-accurate hardware and not a physical memory-capacity claim.
+
+## 11. Timer interrupt (profile addendum, `128-native-v1` + TIMER)
+
+The first asynchronous event. It adds one CSR and one trap cause; no Glyph changes.
+
+| Item | Definition |
+|---|---|
+| CSR 10 `timecmp` | 128-bit, kernel read/write. 0 = disarmed. A non-zero value is a deadline against the retired-Glyph counter (`cycles`, CSR 8). |
+| Cause 7 `TIMER` | Reported in `tcause`; `tval` = 0. |
+| Delivery rule | Before fetching a Glyph, if `priv` = 1 (user), `timecmp` ≠ 0, `tvec` ≠ 0 and `cycles` ≥ `timecmp`: `timecmp` is cleared (one-shot) and the machine traps with `tpc` = the PC of the Glyph that has **not** executed. `tpriv` = 1. |
+| Masking | Implicit: the timer is never delivered in kernel privilege. Trap entry sets privilege 0, so there is no nesting and the non-reentrant kernel needs no interrupt-enable bit. A deadline that passes while the kernel runs fires at the first user Glyph after `tret`. |
+| Priority | The timer check precedes fetch, so a due timer wins over a fault the next Glyph would have raised; that Glyph is re-executed after `tret` and raises its own fault then. |
+| Determinism | The deadline is measured in retired Glyphs, not wall-clock time, so every run is reproducible. A trapped Glyph does not retire. The Python and C machines are tested to agree to the Glyph on every example. |
+| Time width | `cycles`/`timecmp` compare as full 128-bit values; the C machine's counter is 64-bit, which is not reachable within any bounded run. |
+
+Kernelloom arms `timecmp = cycles + QUANTUM` (3000 Glyphs) at boot and on every return to user mode, and treats cause 7 as a preemption: the interrupted task's registers and `tpc` are saved untouched (including `v1`) and the next READY task runs. Threads therefore no longer need to yield. Tested by `Timer` in `tests/test_veylith.py`, the `preempt` example and the CI `preempt` scenario.

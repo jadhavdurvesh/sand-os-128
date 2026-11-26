@@ -11,9 +11,9 @@ typedef unsigned __int128 u128; typedef __int128 s128;
 #define IMM_MASK ((((u128)1)<<88)-1)
 #define CONSOLE_ADDR ((u128)-1-(u128)0xffff)
 #define MAX_STEPS 5000000ULL
-enum { ILLEGAL=1, PRIVILEGE=2, DIVZERO=3, MISALIGN=4, ACCESS=5, SYSCALL=6 };
-enum { PRIV=0, TVEC=1, TPC=2, TCAUSE=3, TVAL=4, TPRIV=5, ABASE=6, ALIM=7, CYCLES=8, SCRATCH=9 };
-typedef struct {u128 v[129],pc,csr[10];unsigned priv;unsigned char*ram;int halted,exit_code;uint64_t cycles;} Machine;
+enum { ILLEGAL=1, PRIVILEGE=2, DIVZERO=3, MISALIGN=4, ACCESS=5, SYSCALL=6, TIMER=7 };
+enum { PRIV=0, TVEC=1, TPC=2, TCAUSE=3, TVAL=4, TPRIV=5, ABASE=6, ALIM=7, CYCLES=8, SCRATCH=9, TIMECMP=10 };
+typedef struct {u128 v[129],pc,csr[11];unsigned priv;unsigned char*ram;int halted,exit_code;uint64_t cycles;} Machine;
 #define GPU_BASE ((u128)-1-(u128)0x1fff)
 #define GPU_WIDTH 1280u
 #define GPU_HEIGHT 720u
@@ -22,7 +22,7 @@ static uint32_t *veylith_fb;
 static u128 gpu_regs[6];
 uint32_t *veylith_framebuffer_ptr(void){return veylith_fb;}
 uint32_t veylith_framebuffer_size(void){return GPU_PIXELS;}
-static const char*cause_name[]={"","ILLEGAL","PRIVILEGE","DIVZERO","MISALIGN","ACCESS","SYSCALL"};
+static const char*cause_name[]={"","ILLEGAL","PRIVILEGE","DIVZERO","MISALIGN","ACCESS","SYSCALL","TIMER"};
 static uint32_t le32(const unsigned char*p){return (uint32_t)p[0]|((uint32_t)p[1]<<8)|((uint32_t)p[2]<<16)|((uint32_t)p[3]<<24);}
 static uint64_t le64(const unsigned char*p){uint64_t x=0;for(int i=7;i>=0;i--)x=(x<<8)|p[i];return x;}
 static u128 le128(const unsigned char*p){u128 x=0;for(int i=15;i>=0;i--)x=(x<<8)|p[i];return x;}
@@ -58,7 +58,7 @@ case 0x50:case 0x51:case 0x52:case 0x53:case 0x54:A=B=I=1;break;
 case 0x60:case 0x70:I=1;break;case 0x61:D=I=1;break;case 0x62:D=A=I=1;break;
 case 0x63:case 0x64:case 0x65:case 0x66:case 0x67:case 0x68:A=B=I=1;break;case 0x72:D=I=1;break;case 0x73:A=I=1;break;default:return 0;}
 return (D||!d)&&(A||!a)&&(B||!b)&&(I||!im)&&d<=128&&a<=128&&b<=128;}
-static void step(Machine*m){u128 pc=m->pc;if(pc>=RAM_SIZE||pc%16){fault(m,pc%16?MISALIGN:ACCESS,pc,pc);return;}u128 raw=le128(m->ram+(size_t)pc);unsigned op=(unsigned)(raw>>112),d=(unsigned)((raw>>104)&255),ai=(unsigned)((raw>>96)&255),bi=(unsigned)((raw>>88)&255);u128 im=raw&IMM_MASK;
+static void step(Machine*m){u128 pc=m->pc;if(m->priv==1&&m->csr[TIMECMP]&&m->csr[TVEC]&&(u128)m->cycles>=m->csr[TIMECMP]){m->csr[TIMECMP]=0;fault(m,TIMER,0,pc);return;}if(pc>=RAM_SIZE||pc%16){fault(m,pc%16?MISALIGN:ACCESS,pc,pc);return;}u128 raw=le128(m->ram+(size_t)pc);unsigned op=(unsigned)(raw>>112),d=(unsigned)((raw>>104)&255),ai=(unsigned)((raw>>96)&255),bi=(unsigned)((raw>>88)&255);u128 im=raw&IMM_MASK;
 if(!valid(op,d,ai,bi,im)){fault(m,ILLEGAL,raw,pc);return;}u128 a=m->v[ai],b=m->v[bi],si=sext(im,88),next=pc+16,npc=next,z=0;int wr=0,e=0,br=0;
 #define W(x) do{z=(u128)(x);wr=1;}while(0)
 switch(op){case 0:break;case 1:if(m->priv){fault(m,PRIVILEGE,0,pc);return;}m->halted=1;m->exit_code=(int)m->v[1];break;
@@ -74,8 +74,8 @@ case 0x50:case 0x51:case 0x52:case 0x53:case 0x54:{unsigned n=op==0x50?1:op==0x5
 case 0x60:npc=pc+16*(s128)si;break;case 0x61:npc=pc+16*(s128)si;if(d)m->v[d]=next;break;case 0x62:npc=a+si;if(d)m->v[d]=next;break;
 case 0x63:br=a==b;goto BR;case 0x64:br=a!=b;goto BR;case 0x65:br=(s128)a<(s128)b;goto BR;case 0x66:br=(s128)a>=(s128)b;goto BR;case 0x67:br=a<b;goto BR;case 0x68:br=a>=b;BR:if(br)npc=pc+16*(s128)si;break;
 case 0x70:fault(m,SYSCALL,im,next);return;case 0x71:if(m->priv){fault(m,PRIVILEGE,0,pc);return;}m->priv=(unsigned)(m->csr[TPRIV]&1);npc=m->csr[TPC];break;
-case 0x72:if(m->priv){fault(m,PRIVILEGE,0,pc);return;}if(im==CYCLES)W(m->cycles);else if(im<10)W(m->csr[(unsigned)im]);else{fault(m,ILLEGAL,im,pc);return;}break;
-case 0x73:if(m->priv){fault(m,PRIVILEGE,0,pc);return;}if(im>=10||im==PRIV||im==CYCLES){fault(m,ILLEGAL,im,pc);return;}m->csr[(unsigned)im]=a;break;default:fault(m,ILLEGAL,raw,pc);return;}
+case 0x72:if(m->priv){fault(m,PRIVILEGE,0,pc);return;}if(im==CYCLES)W(m->cycles);else if(im<11)W(m->csr[(unsigned)im]);else{fault(m,ILLEGAL,im,pc);return;}break;
+case 0x73:if(m->priv){fault(m,PRIVILEGE,0,pc);return;}if(im>=11||im==PRIV||im==CYCLES){fault(m,ILLEGAL,im,pc);return;}m->csr[(unsigned)im]=a;break;default:fault(m,ILLEGAL,raw,pc);return;}
 if(wr&&d)m->v[d]=z;m->v[0]=0;m->pc=npc;m->cycles++;
 #undef W
 }

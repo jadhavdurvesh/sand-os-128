@@ -17,6 +17,7 @@ on:
           - native128
           - badptr
           - threads
+          - preempt
       python_version:
         description: "Python version for the interactive runtime job"
         required: true
@@ -124,6 +125,11 @@ jobs:
             native128)
               python -m veylith boot examples/native128.s --ram "$RAM_BYTES" --max-steps "$MAX_STEPS" "${TRACE_ARGS[@]}" 2>&1 | tee runtime.log
               grep -F "128-bit memory round-trip OK!" runtime.log
+              grep -F "exit code 0" runtime.log
+              ;;
+            preempt)
+              python -m veylith boot examples/preempt.s --ram "$RAM_BYTES" --max-steps "$MAX_STEPS" "${TRACE_ARGS[@]}" 2>&1 | tee runtime.log
+              grep -F "preemption works: ok" runtime.log
               grep -F "exit code 0" runtime.log
               ;;
             threads)

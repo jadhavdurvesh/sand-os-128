@@ -1,6 +1,6 @@
 """Veylith v0 reference emulator: sequential, deterministic, single core."""
 from . import isa
-from .isa import MASK, to_signed, sext, CAUSE_ILLEGAL, CAUSE_PRIVILEGE, CAUSE_DIVZERO, CAUSE_MISALIGN, CAUSE_ACCESS, CAUSE_SYSCALL
+from .isa import MASK, to_signed, sext, CAUSE_ILLEGAL, CAUSE_PRIVILEGE, CAUSE_DIVZERO, CAUSE_MISALIGN, CAUSE_ACCESS, CAUSE_SYSCALL, CAUSE_TIMER
 from . import image as imagemod
 
 CONSOLE_ADDR = (1 << 128) - 0x10000
@@ -143,6 +143,10 @@ class Machine:
         before = list(self.v) if self.trace is not None else None
         raw, name, trap = None, None, None
         try:
+            tc = self.csr[10]                      # timecmp: a 128-bit one-shot deadline against the retired-Glyph counter
+            if self.priv == 1 and tc and self.csr[1] and self.cycles >= tc:
+                self.csr[10] = 0                   # delivered only to user code, so the non-reentrant kernel is never interrupted
+                raise Trap(CAUSE_TIMER, 0, tpc=pc) # tpc = the Glyph that has not executed yet
             raw = self._fetch(pc)
             dec = isa.decode(raw)
             if dec is None:

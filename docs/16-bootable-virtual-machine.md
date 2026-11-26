@@ -46,7 +46,7 @@ Tasks share the one user aperture (they are threads of a single program, not sep
 - `join(tid)` blocks until that task has ended; it returns -1 for a bad tid or your own tid. Slots are reused, so a tid is only meaningful while its task is live.
 - `send` is non-blocking: 0 on success (or direct hand-over to a task waiting in `recv`), -1 for no such task, -2 if the mailbox is full. The value is a full 128-bit register. `recv` blocks until a message arrives.
 - `exit` in task 1 ends the machine (as before); `exit` in a thread ends only that thread. If no task is READY the kernel prints a deadlock message and halts with code 136.
-- Scheduling is cooperative: the machine has no interrupts or timer yet, so a task that never yields or blocks keeps the CPU. A user fault in any task still halts the machine with 128 + cause.
+- Scheduling is round-robin and preemptive: the timer interrupt (spec §11) takes the CPU from a user task every 3000 Glyphs, so a task that never yields cannot starve the others. A user fault in any task still halts the machine with 128 + cause.
 
 Covered by `tests/test_veylith.py` (round-robin, 128-bit messaging, register privacy, edge cases, deadlock) and the CI `threads` scenario; the compiled C machine runs the same boot image to the same result.
 - `4 getcycles()`: returns the guest machine's retired Glyph counter at syscall entry.
