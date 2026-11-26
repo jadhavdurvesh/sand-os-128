@@ -83,6 +83,23 @@ class Kernelloom(unittest.TestCase):
         m=self.boot("examples/factorial.s");o=m.console.decode();self.assertIn("295232799039604140847618609643520000000",o);self.assertIn("170141183460469231731687303715884105728",o);self.assertEqual((m.stop_reason,m.exit_code),("halt",0))
     def test_badptr(self):
         m=self.boot("examples/badptr.s");self.assertIn("user fault cause=5 tval=256",m.console.decode());self.assertEqual(m.exit_code,133)
+    def test_threads_round_robin(self):
+        m=self.boot("examples/pingpong.s");self.assertIn("ABABABAB\n",m.console.decode());self.assertEqual((m.stop_reason,m.exit_code),("halt",0))
+    def test_threads_send_recv_128_bit(self):
+        m=self.boot("examples/threads.s");o=m.console.decode()
+        for n in ("2432902008176640000","265252859812191058636308480000000","295232799039604140847618609643520000000","295233064292463953041110147960176640000"):self.assertIn(n,o)
+        self.assertEqual(o.count("worker result:"),3);self.assertEqual((m.stop_reason,m.exit_code),("halt",0))
+    def test_thread_edge_cases(self):
+        m=self.boot("examples/threadedge.s");self.assertIn("ok\n",m.console.decode());self.assertNotIn("FAIL",m.console.decode());self.assertEqual(m.exit_code,0)
+    def test_deadlock_is_reported(self):
+        m=self.boot("examples/threaddead.s");self.assertIn("deadlock: every task is blocked",m.console.decode());self.assertEqual(m.exit_code,136)
+    def test_threads_keep_private_128_bit_registers(self):
+        src=(".org 0x10000\n_start:\nli sp, 0x1F000\nla v2, other\nli v3, 0x1E000\nli v4, 0\nli v1, 6\nsys 0\nmv v20, v1\n"
+             "li v128, 0x1111111111111111111111111111111\nli v1, 5\nsys 0\nli v9, 0x1111111111111111111111111111111\nbne v128, v9, bad\n"
+             "mv v2, v20\nli v1, 7\nsys 0\nla v2, good\nli v3, 1\nli v1, 1\nsys 0\nli v2, 0\nli v1, 2\nsys 0\n"
+             "bad:\nli v2, 1\nli v1, 2\nsys 0\nother:\nli v128, 0x2222222222222222222222222222222\nli v1, 5\nsys 0\nli v9, 0x2222222222222222222222222222222\nbne v128, v9, bad\nli v1, 2\nli v2, 0\nsys 0\ngood: .ascii \"G\"")
+        m=Machine(1<<20);m.load(asm.assemble(read("kernel/kernelloom.s")));m.load(asm.assemble(src),set_entry=False);m.run(5_000_000)
+        self.assertIn("G",m.console.decode());self.assertEqual(m.exit_code,0)
     def test_high_register_preservation(self):
         src='.org 0x10000\n_start:\nli v128, 0x123456789ABCDEF0123456789ABCDEF\nli v1, 1\nla v2, msg\nli v3, 1\nsys 0\nmv v3, v128\nli v1, 2\nli v2, 0\nsys 0\nmsg: .ascii "X"'
         m=Machine(1<<20);m.load(asm.assemble(read("kernel/kernelloom.s")));m.load(asm.assemble(src),set_entry=False);m.run(5_000_000);self.assertEqual(m.v[3],0x123456789ABCDEF0123456789ABCDEF)

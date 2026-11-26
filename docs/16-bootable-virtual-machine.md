@@ -34,7 +34,21 @@ This is not an x86 machine. The image is not directly bootable by PC BIOS/UEFI o
 ## Kernelloom v1 syscall additions
 
 Kernelloom v1 retains the original write and exit ABI and adds:
-- `3 getpid()`: returns task identifier 1. The kernel is still single-task; this is an identity syscall, not evidence of a scheduler.
+- `3 getpid()`: returns the current task identifier (1 for the booting program, 2 and up for threads).
+- `5 yield()`, `6 spawn(entry, stack_top, arg)`, `7 join(tid)`, `8 send(tid, value)`, `9 recv()`: Kernelloom v2 cooperative threads (below).
+
+### Kernelloom v2 threads
+
+Tasks share the one user aperture (they are threads of a single program, not separate address spaces). The kernel keeps a table of 8 task slots at 0x8000 (outside the aperture), each holding the state, the pending result, the saved `tpc`, a one-deep mailbox and a copy of the 129-quad register frame. A switch copies frames between that slot and the trap frame, so all 127 writable registers (all 128 bits of each) are private to each task.
+
+- `spawn` checks that `entry` is 16-byte aligned and inside the aperture and that `stack_top` is inside it; the new task starts with `v1 = arg` and `sp = stack_top`. Returns the tid, or -1 for bad arguments or a full table.
+- `yield` and every blocking call hand the machine to the next READY task in slot order (round-robin).
+- `join(tid)` blocks until that task has ended; it returns -1 for a bad tid or your own tid. Slots are reused, so a tid is only meaningful while its task is live.
+- `send` is non-blocking: 0 on success (or direct hand-over to a task waiting in `recv`), -1 for no such task, -2 if the mailbox is full. The value is a full 128-bit register. `recv` blocks until a message arrives.
+- `exit` in task 1 ends the machine (as before); `exit` in a thread ends only that thread. If no task is READY the kernel prints a deadlock message and halts with code 136.
+- Scheduling is cooperative: the machine has no interrupts or timer yet, so a task that never yields or blocks keeps the CPU. A user fault in any task still halts the machine with 128 + cause.
+
+Covered by `tests/test_veylith.py` (round-robin, 128-bit messaging, register privacy, edge cases, deadlock) and the CI `threads` scenario; the compiled C machine runs the same boot image to the same result.
 - `4 getcycles()`: returns the guest machine's retired Glyph counter at syscall entry.
 
 Run the syscall smoke test with:

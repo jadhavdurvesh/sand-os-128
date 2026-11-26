@@ -1,4 +1,4 @@
-; Kernelloom v0 -- the first Veylith kernel experiment.
+; Kernelloom v2 -- the Veylith kernel (v2 adds cooperative threads, see the syscall list below).
 ; Runs in kernel privilege, boots one user program inside an aperture (abase/alim),
 ; and serves two system calls.  Syscall ABI: number in v1, arguments in v2..v3, result in v1.
 ;   1 write(ptr=v2, len=v3)  -> bytes written, or -1 if the buffer is not inside the user aperture
@@ -13,6 +13,18 @@
 .equ USER_SIZE, 0x10000
 .equ FRAME,     0x6000
 .equ DIGITS,    0x7F00          ; 40-byte scratch for decimal conversion (end of buffer)
+.equ CURRENT,     0x5100          ; index of the running task slot
+.equ TASKS,       0x8000          ; task table: 8 slots, kept outside the user aperture
+.equ TSTRIDE,     0x900
+.equ NTASKS,      8
+.equ T_STATE,     0               ; 0 free, 1 ready/running, 2 blocked in join, 3 blocked in recv
+.equ T_RESULT,    16              ; value handed back in v1 when the task next runs
+.equ T_TPC,       32
+.equ T_AUX,       48              ; join: the tid awaited
+.equ T_MBFULL,    64
+.equ T_MBVAL,     80              ; one-deep 128-bit mailbox
+.equ T_FRAME,     128             ; saved copy of the 129-quad register frame
+.equ FRAMEQ,      129
 .equ GPU,       0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFE000
 
 .org 0
@@ -23,6 +35,8 @@ _start:
     la   v1, banner
     call puts
     call desktop_init
+    li   v1, 1
+    sq   [v0 + TASKS + T_STATE], v1      ; task 1 (slot 0) is the booting program
     li   v1, USER_BASE
     csrw abase, v1
     csrw tpc, v1
@@ -342,11 +356,21 @@ trap_entry:
     li   v17, 1
     beq  v1, v17, sys_write
     li   v17, 2
-    beq  v1, v17, sys_exit
+    beq  v1, v17, sys_exit_any
     li   v17, 3
     beq  v1, v17, sys_getpid
     li   v17, 4
     beq  v1, v17, sys_getcycles
+    li   v17, 5
+    beq  v1, v17, sys_yield
+    li   v17, 6
+    beq  v1, v17, sys_spawn
+    li   v17, 7
+    beq  v1, v17, sys_join
+    li   v17, 8
+    beq  v1, v17, sys_send
+    li   v17, 9
+    beq  v1, v17, sys_recv
     li   v16, -1
     jmp  syscall_return
 
@@ -372,9 +396,10 @@ bad_buffer:
     li   v16, -1
     jmp  syscall_return
 
-; Return the current task identifier. Kernelloom v1 is single-task, so PID 1 is the only task.
+; Return the current task identifier (1 = the booting program, 2.. = threads from spawn).
 sys_getpid:
-    li   v16, 1
+    lq   v16, [v0 + CURRENT]
+    addi v16, v16, 1
     jmp  syscall_return
 
 ; Return the guest machine's retired Glyph counter at syscall entry.
@@ -524,6 +549,226 @@ sys_exit:
     mv   v1, v22
     halt
 
+; ---- Kernelloom v2: cooperative threads sharing the user aperture ----
+;   5 yield()                      -> 0
+;   6 spawn(entry, stack_top, arg) -> tid, or -1 (bad entry/stack, table full); the new task starts with v1 = arg, sp = stack_top
+;   7 join(tid)                    -> 0 once that task has ended (-1: bad tid or joining yourself)
+;   8 send(tid, value)             -> 0, -1 (no such task) or -2 (its mailbox is full); value is a full 128 bits
+;   9 recv()                       -> the next 128-bit message (blocks while the mailbox is empty)
+; exit() in task 1 ends the machine as before; exit() in a thread ends only that thread.
+; Each task keeps its 129-quad register frame in the table; a switch copies frames in and out of FRAME.
+sys_exit_any:
+    lq   v17, [v0 + CURRENT]
+    beq  v17, v0, sys_exit
+    ; a thread ends: free its slot, wake whoever is joining it, never come back
+    li   v18, TSTRIDE
+    mul  v25, v17, v18
+    li   v18, TASKS
+    add  v25, v25, v18
+    sq   [v25 + T_STATE], v0
+    addi v29, v17, 1                ; tid that just ended
+    li   v20, 0                     ; slot index
+    li   v21, TASKS
+wake_loop:
+    lq   v22, [v21 + T_STATE]
+    li   v23, 2
+    bne  v22, v23, wake_next
+    lq   v22, [v21 + T_AUX]
+    bne  v22, v29, wake_next
+    li   v23, 1
+    sq   [v21 + T_STATE], v23
+wake_next:
+    addi v21, v21, TSTRIDE
+    addi v20, v20, 1
+    li   v23, NTASKS
+    bne  v20, v23, wake_loop
+    li   v26, 1                     ; exited: nothing to save
+    jmp  schedule
+
+sys_yield:
+    li   v16, 0
+    li   v26, 0
+    jmp  schedule
+
+sys_join:
+    li   v17, 1
+    bltu v2, v17, task_bad
+    li   v17, NTASKS + 1
+    bgeu v2, v17, task_bad
+    addi v28, v2, -1
+    lq   v24, [v0 + CURRENT]
+    beq  v28, v24, task_bad         ; cannot join yourself
+    li   v17, TSTRIDE
+    mul  v25, v28, v17
+    li   v17, TASKS
+    add  v25, v25, v17
+    lq   v18, [v25 + T_STATE]
+    li   v16, 0
+    beq  v18, v0, syscall_return    ; already ended
+    li   v17, TSTRIDE
+    mul  v25, v24, v17
+    li   v17, TASKS
+    add  v25, v25, v17
+    li   v18, 2
+    sq   [v25 + T_STATE], v18
+    sq   [v25 + T_AUX], v2
+    li   v16, 0
+    li   v26, 0
+    jmp  schedule
+task_bad:
+    li   v16, -1
+    jmp  syscall_return
+
+sys_spawn:
+    li   v17, USER_BASE
+    bltu v2, v17, task_bad          ; entry below the aperture
+    li   v17, USER_BASE + USER_SIZE
+    bgeu v2, v17, task_bad          ; entry beyond it
+    andi v18, v2, 15
+    bne  v18, v0, task_bad          ; Glyphs are 16-byte aligned
+    li   v17, USER_BASE
+    bgeu v17, v3, task_bad          ; stack top must be above the aperture base
+    li   v17, USER_BASE + USER_SIZE
+    bltu v17, v3, task_bad
+    li   v28, 0
+spawn_scan:
+    li   v17, TSTRIDE
+    mul  v25, v28, v17
+    li   v17, TASKS
+    add  v25, v25, v17
+    lq   v18, [v25 + T_STATE]
+    beq  v18, v0, spawn_found
+    addi v28, v28, 1
+    li   v17, NTASKS
+    bne  v28, v17, spawn_scan
+    jmp  task_bad                   ; table full
+spawn_found:
+    li   v18, 1
+    sq   [v25 + T_STATE], v18
+    sq   [v25 + T_RESULT], v4       ; the first v1 is the argument
+    sq   [v25 + T_TPC], v2
+    sq   [v25 + T_AUX], v0
+    sq   [v25 + T_MBFULL], v0
+    sq   [v25 + T_MBVAL], v0
+    addi v20, v25, T_FRAME
+    li   v22, FRAMEQ
+spawn_zero:
+    sq   [v20 + 0], v0
+    addi v20, v20, 16
+    addi v22, v22, -1
+    bne  v22, v0, spawn_zero
+    sq   [v25 + T_FRAME + 2032], v3 ; v127 = sp
+    addi v16, v28, 1
+    jmp  syscall_return
+
+sys_send:
+    li   v17, 1
+    bltu v2, v17, task_bad
+    li   v17, NTASKS + 1
+    bgeu v2, v17, task_bad
+    addi v28, v2, -1
+    li   v17, TSTRIDE
+    mul  v25, v28, v17
+    li   v17, TASKS
+    add  v25, v25, v17
+    lq   v18, [v25 + T_STATE]
+    beq  v18, v0, task_bad          ; no such task
+    li   v19, 3
+    bne  v18, v19, send_store
+    sq   [v25 + T_RESULT], v3       ; it is waiting in recv: hand the message over and wake it
+    li   v19, 1
+    sq   [v25 + T_STATE], v19
+    li   v16, 0
+    jmp  syscall_return
+send_store:
+    lq   v19, [v25 + T_MBFULL]
+    li   v16, -2
+    bne  v19, v0, syscall_return    ; mailbox already holds a message
+    sq   [v25 + T_MBVAL], v3
+    li   v19, 1
+    sq   [v25 + T_MBFULL], v19
+    li   v16, 0
+    jmp  syscall_return
+
+sys_recv:
+    lq   v24, [v0 + CURRENT]
+    li   v17, TSTRIDE
+    mul  v25, v24, v17
+    li   v17, TASKS
+    add  v25, v25, v17
+    lq   v19, [v25 + T_MBFULL]
+    beq  v19, v0, recv_block
+    lq   v16, [v25 + T_MBVAL]
+    sq   [v25 + T_MBFULL], v0
+    jmp  syscall_return
+recv_block:
+    li   v18, 3
+    sq   [v25 + T_STATE], v18
+    li   v16, 0
+    li   v26, 0
+    jmp  schedule
+
+; schedule: v16 = result for the current task, v26 = 1 when the current task has ended.
+; Saves the current task (unless ended), picks the next READY task round-robin, loads it and returns to user mode.
+schedule:
+    lq   v24, [v0 + CURRENT]
+    li   v17, TSTRIDE
+    mul  v25, v24, v17
+    li   v17, TASKS
+    add  v25, v25, v17
+    bne  v26, v0, sched_pick
+    sq   [v25 + T_RESULT], v16
+    csrr v17, tpc
+    sq   [v25 + T_TPC], v17
+    li   v20, FRAME
+    addi v21, v25, T_FRAME
+    li   v22, FRAMEQ
+sched_save:
+    lq   v23, [v20 + 0]
+    sq   [v21 + 0], v23
+    addi v20, v20, 16
+    addi v21, v21, 16
+    addi v22, v22, -1
+    bne  v22, v0, sched_save
+sched_pick:
+    li   v27, NTASKS
+    mv   v28, v24
+sched_next:
+    addi v28, v28, 1
+    li   v17, NTASKS
+    bltu v28, v17, sched_slot
+    li   v28, 0
+sched_slot:
+    li   v17, TSTRIDE
+    mul  v25, v28, v17
+    li   v17, TASKS
+    add  v25, v25, v17
+    lq   v17, [v25 + T_STATE]
+    li   v18, 1
+    beq  v17, v18, sched_run
+    addi v27, v27, -1
+    bne  v27, v0, sched_next
+    la   v1, msg_deadlock           ; nothing can run: every task is blocked
+    call puts
+    li   v1, 136
+    halt
+sched_run:
+    sq   [v0 + CURRENT], v28
+    addi v20, v25, T_FRAME
+    li   v21, FRAME
+    li   v22, FRAMEQ
+sched_load:
+    lq   v23, [v20 + 0]
+    sq   [v21 + 0], v23
+    addi v20, v20, 16
+    addi v21, v21, 16
+    addi v22, v22, -1
+    bne  v22, v0, sched_load
+    lq   v17, [v25 + T_TPC]
+    csrw tpc, v17
+    lq   v16, [v25 + T_RESULT]
+    jmp  syscall_return
+
 user_fault:
     la   v1, msg_fault
     call puts
@@ -580,6 +825,7 @@ banner:    .asciz "[kernelloom] Veylith 128-Native v1 booting user program\n"
 msg_exit:  .asciz "[kernelloom] user exit "
 msg_fault: .asciz "[kernelloom] user fault cause="
 msg_addr:  .asciz " tval="
+msg_deadlock: .asciz "[kernelloom] deadlock: every task is blocked\n"
 
 ; SAND Desktop UI labels rendered by the guest graphics device.
 text_brand:       .ascii "SAND "
