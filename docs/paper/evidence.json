@@ -1,6 +1,6 @@
 {
   "unit": {
-    "tests": 59,
+    "tests": 63,
     "passed": true,
     "skipped": 0
   },
@@ -8,7 +8,7 @@
     "programs": 3000,
     "passed": true,
     "divergences": 0,
-    "seconds": 111.1,
+    "seconds": 159.3,
     "machines": "Python big-integer reference vs C unsigned __int128",
     "instructions_per_program": "about 634 retired Glyphs on average"
   },
@@ -26,20 +26,20 @@
       "bytes_per_glyph": 16
     },
     "syscall_getpid": {
-      "extra_glyphs_per_call": 280.1
+      "extra_glyphs_per_call": 282.1
     },
     "yield_context_switch": {
-      "extra_glyphs_per_yield": 869.5,
+      "extra_glyphs_per_yield": 873.5,
       "register_frame_bytes": 2064,
       "quads_copied_per_switch": 258
     },
     "preemption": {
-      "total_glyphs": 70803,
+      "total_glyphs": 70886,
       "boot_glyphs_before_first_user_glyph": 669,
       "timer_traps": 18,
-      "kernel_glyphs_per_timer_trap": 855.5,
+      "kernel_glyphs_per_timer_trap": 859.5,
       "quantum_glyphs": 3000,
-      "overhead_fraction": 0.222
+      "overhead_fraction": 0.223
     },
     "sigil": {
       "glyphs_per_raw_load_iteration": 3.0,
@@ -51,10 +51,17 @@
       "avalanche_mean_mac_bits_flipped": 19.99,
       "avalanche_ideal": 20.0
     },
+    "sigil_gate": {
+      "calls_measured": 100,
+      "glyphs_per_gate_call_empty_service": 2,
+      "glyphs_per_gate_call_counter_service": 6.0,
+      "glyphs_per_null_syscall_round_trip": 282.1,
+      "glyphs_per_yield_context_switch": 873.5
+    },
     "images": {
-      "kernel_image_bytes": 20908,
+      "kernel_image_bytes": 20988,
       "kernel_syscalls": 12,
-      "veylith_opcodes": 68
+      "veylith_opcodes": 70
     }
   }
 }

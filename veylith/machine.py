@@ -16,7 +16,8 @@ GPU_FONT = {"0":[14,17,19,21,25,17,14],"1":[4,12,4,4,4,4,14],"2":[14,17,1,2,4,8,
 # [127:88] MAC (40) | [87:80] perms (bit0 READ, bit1 WRITE, bit2 NARROW) | [79:72] exp (region = 2**exp bytes) | [71:0] base (aligned to 2**exp)
 SIGIL_K = 0x9E3779B97F4A7C15F39CC0605CEDC835
 SIGIL_BODY = (1 << 88) - 1
-SIGIL_PERMS = 0x87
+SIGIL_PERMS = 0x8F
+SIGIL_GATE = 0x08
 SIGIL_SEALED = 0x80
 
 
@@ -286,6 +287,17 @@ class Machine:
             if p is None:
                 raise Trap(CAUSE_CAPABILITY, a)
             self._write(rd, sigil_make(self.csr[11], p[0], p[1] | SIGIL_SEALED, p[2]))
+        elif name == "ccall":
+            p = sigil_parse(self.csr[11], a)
+            if p is None or p[1] & (SIGIL_SEALED | SIGIL_GATE) != (SIGIL_SEALED | SIGIL_GATE) or p[2] < 4 or self.csr[13]:
+                raise Trap(CAUSE_CAPABILITY, a)
+            self._write(rd, sigil_make(self.csr[11], p[0], p[1] & ~(SIGIL_SEALED | SIGIL_GATE), p[2]))
+            self.csr[13] = nxt
+            newpc = p[0]
+        elif name == "cretn":
+            if not self.csr[13]:
+                raise Trap(CAUSE_CAPABILITY, 0)
+            newpc, self.csr[13] = self.csr[13], 0
         elif name == "cunseal":
             self._need_kernel()
             p = sigil_parse(self.csr[11], a)

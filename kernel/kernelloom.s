@@ -25,6 +25,7 @@
 .equ T_MBFULL,    64
 .equ T_MBVAL,     80              ; one-deep 128-bit mailbox
 .equ T_CMODE,     96              ; 1 = capability mode: raw loads/stores trap, only Sigil capabilities reach memory
+.equ T_CLINK,     112             ; return link of an active gate call (CSR clink), saved per task
 .equ T_FRAME,     128             ; saved copy of the 129-quad register frame
 .equ FRAMEQ,      129
 .equ CKEY_VALUE,   0x5349474C4B45592D56455945564559A  ; boot-time Sigil key: a constant so runs stay deterministic (a real machine needs an entropy source)
@@ -431,8 +432,8 @@ sys_getcycles:
 sys_capget:
     li   v17, 16
     bltu v17, v3, task_bad          ; region larger than the 64 KiB aperture
-    li   v17, 8
-    bltu v17, v4, task_bad          ; perms must be within READ|WRITE|NARROW
+    li   v17, 15
+    bltu v17, v4, task_bad          ; perms must be within READ|WRITE|NARROW|GATE
     li   v17, USER_BASE
     bltu v2, v17, task_bad
     li   v18, 1
@@ -474,9 +475,11 @@ sys_cwrite:
 syscall_return:
     lq   v17, [v0 + CURRENT]        ; install the returning task's capability mode
     li   v18, TSTRIDE
-    mul  v17, v17, v18
-    lq   v17, [v17 + TASKS + T_CMODE]
+    mul  v18, v17, v18
+    lq   v17, [v18 + TASKS + T_CMODE]
     csrw cmode, v17
+    lq   v17, [v18 + TASKS + T_CLINK]
+    csrw clink, v17
     csrr v17, cycles                ; every return to user mode re-arms the one-shot timer
     addi v17, v17, QUANTUM
     csrw timecmp, v17
@@ -727,6 +730,7 @@ spawn_found:
     mul  v19, v19, v17
     lq   v19, [v19 + TASKS + T_CMODE]
     sq   [v25 + T_CMODE], v19
+    sq   [v25 + T_CLINK], v0
     li   v18, 1
     sq   [v25 + T_STATE], v18
     sq   [v25 + T_RESULT], v4       ; the first v1 is the argument
@@ -804,6 +808,8 @@ schedule:
     sq   [v25 + T_RESULT], v16
     csrr v17, tpc
     sq   [v25 + T_TPC], v17
+    csrr v17, clink
+    sq   [v25 + T_CLINK], v17
     li   v20, FRAME
     addi v21, v25, T_FRAME
     lq   v23, [v20 + 0]

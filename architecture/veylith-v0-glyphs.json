@@ -418,6 +418,18 @@
       "summary": "rd = ra with the SEALED bit (perm 0x80) set: an opaque token that cannot load, store or narrow"
     },
     {
+      "name": "ccall",
+      "opcode": "0x89",
+      "format": "rr",
+      "summary": "gate call: ra must be a valid sealed GATE sigil; clink = next pc, rd = the gate unsealed (data authority), pc = gate base; traps if a call is already active"
+    },
+    {
+      "name": "cretn",
+      "opcode": "0x8A",
+      "format": "none",
+      "summary": "gate return: pc = clink, clink = 0; traps if no call is active"
+    },
+    {
       "name": "cunseal",
       "opcode": "0x88",
       "format": "rr",
@@ -437,7 +449,8 @@
     "scratch": 9,
     "timecmp": 10,
     "ckey": 11,
-    "cmode": 12
+    "cmode": 12,
+    "clink": 13
   },
   "causes": {
     "1": "ILLEGAL",
