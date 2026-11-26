@@ -18,6 +18,7 @@ RRI = ["addi", "andi", "ori", "xori", "shli", "shri", "sari"]
 LOADS = {"lb": 1, "lbs": 1, "lh": 2, "lhs": 2, "lw": 4, "lws": 4, "ld": 8, "lds": 8, "lq": 16}
 STORES = {"sb": 1, "sh": 2, "sw": 4, "sd": 8, "sq": 16}
 MEM = 0x8000
+CAPS = [20, 21, 22, 23]
 
 
 def value(rng):
@@ -36,9 +37,28 @@ def program(seed, length=220):
     for r in DATA:
         L.append(f"li v{r}, {value(rng)}")
     L.append(f"li v16, {MEM}")
+    L += ["la v14, trapped", "csrw tvec, v14", "li v18, 0", f"li v13, {rng.getrandbits(128)}", "csrw ckey, v13"]     # trap handler counts faults and skips them
+    for cr, (base, perms, exp) in zip(CAPS, [(MEM, 7, 8), (MEM + 64, 7, 6), (MEM, 1, 8), (MEM + 128, 6, 7)]):
+        L += [f"li v13, {base}", f"li v14, {perms | exp << 8}", f"cmint v{cr}, v13, v14"]
     n = 0
     while n < length:
         k = rng.random()
+        if rng.random() < 0.22:                                       # Sigil capability operations (valid and invalid)
+            cr = lambda: f"v{rng.choice(CAPS)}"
+            j = rng.random()
+            if j < 0.3:
+                rb = rng.randrange(8) | rng.randrange(0, 10) << 8 | rng.randrange(0, 256, 1 << rng.randrange(0, 6)) << 16
+                L += [f"li v13, {rb}", f"cnarrow {rng.choice([cr(), reg()])}, {cr()}, v13"]
+            elif j < 0.45:
+                L.append(f"cinfo {reg()}, {rng.choice([cr(), reg()])}")
+            elif j < 0.8:
+                op = rng.choice(["clb", "clq"]); w = 1 if op == "clb" else 16
+                L.append(f"{op} {reg()}, [{cr()} + {rng.choice([rng.randrange(0, 280, w), -w, 260])}]")
+            else:
+                op = rng.choice(["csb", "csq"]); w = 1 if op == "csb" else 16
+                L.append(f"{op} [{cr()} + {rng.choice([rng.randrange(0, 280, w), -w, 260])}], {reg()}")
+            n += 1
+            continue
         if k < 0.30:
             L.append(f"{rng.choice(RRR)} {reg()}, {reg()}, {reg()}")
         elif k < 0.38:
@@ -68,13 +88,14 @@ def program(seed, length=220):
         n += 1
     # fold every data register and a 256-byte memory window into one 128-bit hash, then print it as 32 hex digits
     L += ["li v14, 0", "li v15, 0x9E3779B97F4A7C15F39CC0605CEDC835"]
-    for r in DATA:
+    for r in DATA + [18] + CAPS:
         L += [f"rol v14, v14, v15", f"xor v14, v14, v{r}", "mul v14, v14, v15"]
     for q in range(16):
         L += [f"lq v13, [v16 + {q * 16}]", "rol v14, v14, v15", "xor v14, v14, v13", "mul v14, v14, v15"]
     L += ["li v11, 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFF0000", "li v12, 32", "hex:", "shri v10, v14, 124", "li v9, 10",
           "bltu v10, v9, digit", "addi v10, v10, 87", "jmp put", "digit:", "addi v10, v10, 48", "put:", "sb [v11 + 0], v10",
-          "shli v14, v14, 4", "addi v12, v12, -1", "bne v12, v0, hex", "li v1, 0", "halt"]
+          "shli v14, v14, 4", "addi v12, v12, -1", "bne v12, v0, hex", "li v1, 0", "halt",
+          "trapped:", "csrr v19, tpc", "addi v19, v19, 16", "csrw tpc, v19", "addi v18, v18, 1", "tret"]
     return "\n".join(L) + "\n"
 
 

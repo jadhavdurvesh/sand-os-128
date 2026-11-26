@@ -92,7 +92,7 @@ class Kernelloom(unittest.TestCase):
     def test_thread_edge_cases(self):
         m=self.boot("examples/threadedge.s");self.assertIn("ok\n",m.console.decode());self.assertNotIn("FAIL",m.console.decode());self.assertEqual(m.exit_code,0)
     def test_deadlock_is_reported(self):
-        m=self.boot("examples/threaddead.s");self.assertIn("deadlock: every task is blocked",m.console.decode());self.assertEqual(m.exit_code,136)
+        m=self.boot("examples/threaddead.s");self.assertIn("deadlock: every task is blocked",m.console.decode());self.assertEqual(m.exit_code,200)
     def test_threads_keep_private_128_bit_registers(self):
         src=(".org 0x10000\n_start:\nli sp, 0x1F000\nla v2, other\nli v3, 0x1E000\nli v4, 0\nli v1, 6\nsys 0\nmv v20, v1\n"
              "li v128, 0x1111111111111111111111111111111\nli v1, 5\nsys 0\nli v9, 0x1111111111111111111111111111111\nbne v128, v9, bad\n"
@@ -101,7 +101,7 @@ class Kernelloom(unittest.TestCase):
         m=Machine(1<<20);m.load(asm.assemble(read("kernel/kernelloom.s")));m.load(asm.assemble(src),set_entry=False);m.run(5_000_000)
         self.assertIn("G",m.console.decode());self.assertEqual(m.exit_code,0)
     def test_kernel_image_stays_below_its_scratch_area(self):
-        segs,_=image.unpack(asm.assemble(read("kernel/kernelloom.s")));self.assertLessEqual(max(a+len(d) for a,d in segs),0x5000)   # 0x5000 holds the link save and CURRENT
+        segs,_=image.unpack(asm.assemble(read("kernel/kernelloom.s")));self.assertLessEqual(max(a+len(d) for a,d in segs),0x5800)   # kernel stack grows down from 0x6000; keep 2 KiB for it
     def test_high_register_preservation(self):
         src='.org 0x10000\n_start:\nli v128, 0x123456789ABCDEF0123456789ABCDEF\nli v1, 1\nla v2, msg\nli v3, 1\nsys 0\nmv v3, v128\nli v1, 2\nli v2, 0\nsys 0\nmsg: .ascii "X"'
         m=Machine(1<<20);m.load(asm.assemble(read("kernel/kernelloom.s")));m.load(asm.assemble(src),set_entry=False);m.run(5_000_000);self.assertEqual(m.v[3],0x123456789ABCDEF0123456789ABCDEF)
@@ -127,12 +127,78 @@ class NativeMachine(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             exe=os.path.join(d,"vvm");r=subprocess.run([cc,"-std=c11","-O2","-o",exe,"native/veylith-vm.c"],capture_output=True)
             if r.returncode:self.skipTest("C machine did not build")
-            for ex in ("hello","factorial","native128","badptr","process_info","threads","pingpong","threadedge","threaddead","preempt"):
+            for ex in ("hello","factorial","native128","badptr","process_info","threads","pingpong","threadedge","threaddead","preempt","sigil","sigilforge","sigilraw"):
                 img=os.path.join(d,ex+".img");
                 with open(img,"wb") as f:f.write(disk.build(read("kernel/kernelloom.s"),read(f"examples/{ex}.s")))
                 c=subprocess.run([exe,img],capture_output=True,text=True);m=Kernelloom.boot(Kernelloom,f"examples/{ex}.s")
                 n=int(re.search(r"(\d+) Glyphs",c.stdout+c.stderr).group(1))
                 self.assertEqual(n,m.cycles,ex);self.assertEqual(m.console.decode().rstrip(),c.stdout.rstrip().replace("\r",""),ex)
+class Sigil(unittest.TestCase):
+    """Sigil capabilities: 128-bit, tag-free, MAC-authenticated, hardware-checked (docs/18)."""
+    KEY="li v1, 0x1234567890ABCDEF1234567890ABCDEF\ncsrw ckey, v1\n"
+    MINT="li v2, 0x9000\nli v3, 0x0707\ncmint v4, v2, v3\n"             # base 0x9000, exp 7 (128 bytes), perms R|W|NARROW
+    def test_mint_roundtrip_and_layout(self):
+        m=run(self.KEY+self.MINT+"cinfo v5, v4\nhalt")
+        self.assertEqual(m.v[5],(1<<127)|(7<<80)|(7<<72)|0x9000)
+        self.assertEqual(m.v[4]&((1<<88)-1),(7<<80)|(7<<72)|0x9000);self.assertNotEqual(m.v[4]>>88,0)
+    def test_every_single_bit_flip_invalidates(self):
+        m=run(self.KEY+self.MINT+"halt");cap=m.v[4]
+        for bit in range(128):
+            m2=run(self.KEY+f"li v6, {cap^(1<<bit)}\ncinfo v5, v6\nhalt");self.assertEqual(m2.v[5],0,bit)
+    def test_random_values_are_not_capabilities(self):
+        import random;rng=random.Random(7);src=self.KEY+"li v7, 0\n"+"".join(f"li v6, {rng.getrandbits(128)}\ncinfo v5, v6\nor v7, v7, v5\n" for _ in range(300))+"halt"
+        self.assertEqual(run(src,steps=20000).v[7],0)        # 300 guesses, each succeeds with probability 2^-40
+    def test_changing_the_key_revokes_everything(self):
+        m=run(self.KEY+self.MINT+"li v1, 99\ncsrw ckey, v1\ncinfo v5, v4\nhalt");self.assertEqual(m.v[5],0)
+    def test_load_store_through_a_capability(self):
+        m=run(self.KEY+self.MINT+"li v6, 0x1122334455667788AABBCCDDEEFF0011\ncsq [v4 + 16], v6\nclq v7, [v4 + 16]\nli v8, 0xAB\ncsb [v4 + 5], v8\nclb v9, [v4 + 5]\nlb v10, [v2 + 5]\nlq v11, [v2 + 16]\nhalt")
+        self.assertEqual((m.v[7],m.v[9],m.v[10],m.v[11]),(0x1122334455667788AABBCCDDEEFF0011,0xAB,0xAB,0x1122334455667788AABBCCDDEEFF0011))
+    def test_bounds_permissions_and_forgery_trap(self):
+        for src in ("clq v7, [v4 + 128]","clq v7, [v4 + 120]","clb v7, [v4 + -1]","clb v7, [v4 + 128]","csb [v4 + 128], v0","li v6, 1\ncsb [v6 + 0], v0",
+                    "li v5, 0x9000\nclb v7, [v5 + 0]"):
+            self.assertEqual(trap(self.KEY+self.MINT+src)[0],isa.CAUSE_CAPABILITY,src)
+        ro="li v2, 0x9000\nli v3, 0x0701\ncmint v4, v2, v3\n"             # read-only, exp 7, no NARROW
+        self.assertEqual(trap(self.KEY+ro+"csb [v4 + 0], v0")[0],isa.CAUSE_CAPABILITY)
+        self.assertEqual(run(self.KEY+ro+"clb v7, [v4 + 0]\nhalt").stop_reason,"halt")
+        wo="li v2, 0x9000\nli v3, 0x0702\ncmint v4, v2, v3\n"
+        self.assertEqual(trap(self.KEY+wo+"clb v7, [v4 + 0]")[0],isa.CAUSE_CAPABILITY)
+        self.assertEqual(run(self.KEY+wo+"csb [v4 + 0], v0\nhalt").stop_reason,"halt")
+    def test_narrowing_is_monotonic(self):
+        # sub-region [0x9040, 0x9060): exp 5, offset 0x40, perms R only
+        m=run(self.KEY+self.MINT+f"li v6, {1|5<<8|0x40<<16}\ncnarrow v7, v4, v6\ncinfo v8, v7\nhalt");self.assertEqual(m.v[8],(1<<127)|(1<<80)|(5<<72)|0x9040)
+        for rb in (1|2<<8|0x40<<16 | 4<<0 | 8<<0, 8|5<<8|0x40<<16, 1|8<<8|0x40<<16, 1|5<<8|0x41<<16, 1|5<<8|0x80<<16, 1|6<<8|0x60<<16):
+            self.assertEqual(trap(self.KEY+self.MINT+f"li v6, {rb}\ncnarrow v7, v4, v6")[0],isa.CAUSE_CAPABILITY,hex(rb))
+        self.assertEqual(trap(self.KEY+self.MINT+f"li v6, {3|5<<8}\ncnarrow v7, v4, v6\ncnarrow v8, v7, v6")[0],isa.CAUSE_CAPABILITY)   # the narrowed cap lost NARROW
+        self.assertEqual(trap(self.KEY+self.MINT+f"li v6, {7|7<<8}\ncnarrow v7, v4, v6\nli v6, {1|8<<8}\ncnarrow v8, v7, v6")[0],isa.CAUSE_CAPABILITY)   # cannot grow
+    def test_only_the_kernel_can_mint(self):
+        src=Timer.PRE+"tret\n.org 0x4000\nli v2, 0x4000\nli v3, 0x0707\ncmint v4, v2, v3\nhalt\nhandler:\ncsrr v121, tcause\nhalt"
+        self.assertEqual(run(src,steps=1000).v[121],isa.CAUSE_PRIVILEGE)
+    def test_capability_mode_forbids_raw_memory_access(self):
+        pre=Timer.PRE.replace("tret","")
+        body=(".org 0x4000\nli v5, 0x4800\n%s\nsys 1\nhandler:\ncsrr v121, tcause\ncsrr v122, tval\nhalt")
+        k=pre+"li v1, 1\ncsrw cmode, v1\ntret\n"
+        for raw in ("lb v6, [v5 + 0]","sq [v5 + 0], v0"):
+            m=run(k+body%raw,steps=1000);self.assertEqual((m.v[121],m.v[122]),(isa.CAUSE_CAPABILITY,0x4800),raw)
+        # the same access is fine when the mode is off, and a capability access is fine when it is on
+        self.assertEqual(run(pre+"tret\n"+body%"lb v6, [v5 + 0]",steps=1000).v[121],isa.CAUSE_SYSCALL)
+        mint="li v1, 0x55\ncsrw ckey, v1\nli v2, 0x4800\nli v3, 0x0707\ncmint v4, v2, v3\nli v1, 1\ncsrw cmode, v1\n"
+        m=run(pre+mint+"tret\n"+".org 0x4000\nli v6, 9\ncsq [v4 + 32], v6\nclq v7, [v4 + 32]\nlq v8, [v5 + 0]\nsys 1\nhandler:\ncsrr v121, tcause\nhalt",steps=1000)
+        self.assertEqual(m.v[7],9);self.assertEqual(m.v[121],isa.CAUSE_CAPABILITY)       # cap access ok, then the raw lq traps
+    def test_kernelloom_capabilities_end_to_end(self):
+        m=Kernelloom.boot(Kernelloom,"examples/sigil.s");o=m.console.decode()
+        self.assertIn("Hi\n",o);self.assertIn("sigil capabilities: ok",o);self.assertEqual((m.stop_reason,m.exit_code),("halt",0))
+    def test_kernelloom_stops_forgery_and_raw_access_in_capability_mode(self):
+        for ex,tval in (("examples/sigilforge.s",0x7F0000000000000000000000000000AA),("examples/sigilraw.s",None)):
+            m=Kernelloom.boot(Kernelloom,ex);o=m.console.decode()
+            self.assertIn("user fault cause=8",o,ex);self.assertEqual(m.exit_code,128+isa.CAUSE_CAPABILITY,ex)
+            if tval:self.assertIn(f"tval={tval}",o)
+    def test_capget_validates_regions_and_capability_mode_is_inherited(self):
+        pre=".org 0x10000\n_start:\nli sp, 0x1F000\n"
+        def sysc(n,*args):return "".join(f"li v{i+2}, {a}\n" for i,a in enumerate(args))+f"li v1, {n}\nsys 0\n"
+        bad=[(0x10000,17,1),(0x10000,6,9),(0xF000,6,1),(0x10010,6,1),(0x1FFC0,7,1)]      # too big, bad perms, below aperture, misaligned, past the end
+        src=pre+"".join(sysc(10,*a)+"li v9, -1\nbne v1, v9, wrong\n" for a in bad)+sysc(10,0x10000,6,7)+"cinfo v5, v1\nbeq v5, v0, wrong\nli v2, 0\nli v1, 2\nsys 0\nwrong:\nli v2, 1\nli v1, 2\nsys 0\n"
+        m=Machine(1<<20);m.load(asm.assemble(read("kernel/kernelloom.s")));m.load(asm.assemble(src),set_entry=False);m.run(2_000_000);self.assertEqual((m.stop_reason,m.exit_code),("halt",0))
+    def test_cap_cause_name(self):self.assertEqual(isa.CAUSES[8],"CAPABILITY")
 class Trace(unittest.TestCase):
     def test_trace_width(self):
         m=Machine(1<<16);m.trace=[];m.load(asm.assemble("li v100, 1\n halt"));m.run(10);self.assertEqual(len(m.trace[0]["raw"])-2,32)
