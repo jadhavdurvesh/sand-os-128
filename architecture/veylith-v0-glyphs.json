@@ -368,6 +368,48 @@
       "opcode": "0x73",
       "format": "csrw",
       "summary": "kernel only: csr[imm] = ra"
+    },
+    {
+      "name": "cmint",
+      "opcode": "0x80",
+      "format": "rrr",
+      "summary": "kernel only: rd = sigil(base=ra, perms|exp<<8 = rb), MAC under csr ckey; CAPABILITY trap if misaligned"
+    },
+    {
+      "name": "cnarrow",
+      "opcode": "0x81",
+      "format": "rrr",
+      "summary": "rd = sub-sigil of ra: rb = perms | exp<<8 | offset<<16; may only shrink perms and region (needs NARROW)"
+    },
+    {
+      "name": "cinfo",
+      "opcode": "0x82",
+      "format": "rr",
+      "summary": "rd = (1<<127) | low 88 bits of sigil ra if its MAC verifies, else 0 (never traps)"
+    },
+    {
+      "name": "clb",
+      "opcode": "0x83",
+      "format": "ld",
+      "summary": "rd = zext(mem8[base(ra) + imm]) through sigil ra: needs READ, 0 <= imm < 2^exp"
+    },
+    {
+      "name": "clq",
+      "opcode": "0x84",
+      "format": "ld",
+      "summary": "rd = mem128[base(ra) + imm] through sigil ra"
+    },
+    {
+      "name": "csb",
+      "opcode": "0x85",
+      "format": "st",
+      "summary": "mem8[base(ra) + imm] = rb through sigil ra: needs WRITE"
+    },
+    {
+      "name": "csq",
+      "opcode": "0x86",
+      "format": "st",
+      "summary": "mem128[base(ra) + imm] = rb through sigil ra"
     }
   ],
   "csrs": {
@@ -381,7 +423,9 @@
     "alim": 7,
     "cycles": 8,
     "scratch": 9,
-    "timecmp": 10
+    "timecmp": 10,
+    "ckey": 11,
+    "cmode": 12
   },
   "causes": {
     "1": "ILLEGAL",
@@ -390,6 +434,7 @@
     "4": "MISALIGN",
     "5": "ACCESS",
     "6": "SYSCALL",
-    "7": "TIMER"
+    "7": "TIMER",
+    "8": "CAPABILITY"
   }
 }

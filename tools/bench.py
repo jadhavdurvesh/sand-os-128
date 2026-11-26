@@ -132,9 +132,25 @@ sys 0"""
     R["preemption"] = {"total_glyphs": m.cycles, "boot_glyphs_before_first_user_glyph": first_user, "timer_traps": len(runs.get("TIMER", [])),
                        "kernel_glyphs_per_timer_trap": avg(runs.get("TIMER", [])), "quantum_glyphs": 3000,
                        "overhead_fraction": round(avg(runs.get("TIMER", [])) / (3000 + avg(runs.get("TIMER", []))), 3)}
+    # 4b. Sigil capabilities: access cost, forgery resistance, and avalanche quality of the stand-in MAC
+    import random
+    from veylith.machine import sigil_mac, sigil_parse, sigil_make
+    key = 0x1234567890ABCDEF1234567890ABCDEF
+    rng = random.Random(2026)
+    guesses = 300_000
+    accepted = sum(1 for _ in range(guesses) if sigil_parse(key, rng.getrandbits(128)) is not None)
+    flips = trials = 0
+    for _ in range(20000):
+        body = rng.getrandbits(88); bit = rng.randrange(88)
+        flips += bin(sigil_mac(key, body) ^ sigil_mac(key, body ^ (1 << bit))).count("1"); trials += 1
+    raw_loop = "li v9, 1000\nli v2, 0x9000\nl:\nlq v4, [v2 + 16]\naddi v9, v9, -1\nbne v9, v0, l\nhalt"
+    cap_loop = "li v1, 5\ncsrw ckey, v1\nli v2, 0x9000\nli v3, 0x0707\ncmint v5, v2, v3\nli v9, 1000\nl:\nclq v4, [v5 + 16]\naddi v9, v9, -1\nbne v9, v0, l\nhalt"
+    R["sigil"] = {"glyphs_per_raw_load_iteration": round(raw(raw_loop).cycles / 1000, 2), "glyphs_per_capability_load_iteration": round((raw(cap_loop).cycles - 6) / 1000, 2),
+                  "mac_bits": 40, "random_guesses_tried": guesses, "random_guesses_accepted": accepted,
+                  "expected_forgery_probability": "2^-40 per attempt", "avalanche_mean_mac_bits_flipped": round(flips / trials, 2), "avalanche_ideal": 20.0}
     # 5. image sizes
     kb = asm.assemble(KERNEL)
-    R["images"] = {"kernel_image_bytes": len(kb), "kernel_syscalls": 9, "veylith_opcodes": len(isa.BY_NAME)}
+    R["images"] = {"kernel_image_bytes": len(kb), "kernel_syscalls": 12, "veylith_opcodes": len(isa.BY_NAME)}
     txt = json.dumps(R, indent=2)
     print(txt)
     if a.json:

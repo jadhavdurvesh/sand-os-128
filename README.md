@@ -74,11 +74,14 @@ python3 -m veylith boot examples/badptr.s     # a user fault caught by the kerne
 python3 -m veylith boot examples/process_info.s # getpid/getcycles syscall checks
 python3 -m veylith boot examples/threads.s    # three threads send 128-bit results to task 1
 python3 -m veylith boot examples/pingpong.s   # round-robin yield: ABABABAB
+python3 -m veylith boot examples/sigil.s      # Sigil capabilities: mint, narrow, pass to a worker in capability mode
+python3 -m veylith boot examples/sigilforge.s # forged capability -> CAPABILITY fault (exit 136)
+python3 -m veylith boot examples/sigilraw.s   # raw access in capability mode -> CAPABILITY fault
 python3 -m veylith boot examples/preempt.s    # two spinning tasks, no yield: only the timer interrupt lets them share the CPU
 python3 -m veylith asm prog.s -o prog.vyl     # assemble
 python3 -m veylith dis prog.vyl               # disassemble
 python3 -m veylith run kernel.vyl user.vyl --trace trace.jsonl
-python3 -m unittest discover -s tests         # 43 tests
+python3 -m unittest discover -s tests         # 56 tests
 ```
 
 ## Repository layout
@@ -138,7 +141,7 @@ Use **Actions → Veylith CI → Run workflow** to select a scenario and runtime
 | Veylith 128-Native v1 base profile | Accepted; implemented; verified in the emulator |
 | Reference emulator | Implemented (Python, single core, deterministic, Tracebook) |
 | Assembler / disassembler / image format | Implemented |
-| Kernelloom v2 | Implemented: user mode, aperture protection, fault reporting, threads (spawn/yield/join) with timer-interrupt preemption, 128-bit message passing, deadlock detection |
+| Kernelloom v2 | Implemented: user mode, aperture protection, fault reporting, threads (spawn/yield/join) with timer-interrupt preemption, 128-bit message passing, deadlock detection, Sigil capability syscalls (see [docs/18](docs/18-sigil-capabilities.md)) |
 | Timer interrupt | Implemented (`timecmp`, cause 7; user mode only, one-shot) |
 | Paging, device interrupts, atomics, floating point | Not implemented |
 | Compiler, filesystem, devices beyond a console | Not implemented |

@@ -24,4 +24,8 @@ Virtual memory (only aperture protection); cheaper context switching (dirty mask
 
 ## Limits of the evidence
 
-Both machines come from one author and one specification, so agreement catches implementation slips, not specification mistakes. The fuzzer does not produce traps, privileged instructions or timer races. Counts are retired Glyphs on a deterministic model, not time. The kernel image sits just below a fixed scratch address (checked by a test, ~0x4DC4 of 0x5000).
+Both machines come from one author and one specification, so agreement catches implementation slips, not specification mistakes. The fuzzer does not produce traps, privileged instructions or timer races. Counts are retired Glyphs on a deterministic model, not time. The kernel image sits below the kernel stack (checked by a test, now ~0x5174, limit 0x5800 so the stack at 0x6000 keeps 2 KiB).
+
+## Novelty and Sigil
+
+A short prior-art search (RV128I, QEMU RV128, CHERI, Arm PAC, Amoeba, Mungi, AS/400) found no published design combining a clean-sheet all-128-bit machine, hardware-checked capabilities with bounds, and no tag memory. The Sigil mechanism ([docs/18](18-sigil-capabilities.md)) is built around that combination. The survey is not exhaustive, so this is a limited claim, not proof of novelty. Open items: a vetted MAC, sealed capabilities, per-object revocation, MAC latency, paging interaction.

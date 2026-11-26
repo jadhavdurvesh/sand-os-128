@@ -18,6 +18,7 @@ on:
           - badptr
           - threads
           - preempt
+          - sigil
       python_version:
         description: "Python version for the interactive runtime job"
         required: true
@@ -130,6 +131,11 @@ jobs:
             preempt)
               python -m veylith boot examples/preempt.s --ram "$RAM_BYTES" --max-steps "$MAX_STEPS" "${TRACE_ARGS[@]}" 2>&1 | tee runtime.log
               grep -F "preemption works: ok" runtime.log
+              grep -F "exit code 0" runtime.log
+              ;;
+            sigil)
+              python -m veylith boot examples/sigil.s --ram "$RAM_BYTES" --max-steps "$MAX_STEPS" "${TRACE_ARGS[@]}" 2>&1 | tee runtime.log
+              grep -F "sigil capabilities: ok" runtime.log
               grep -F "exit code 0" runtime.log
               ;;
             threads)

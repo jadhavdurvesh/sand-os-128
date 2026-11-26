@@ -9,6 +9,7 @@ M = {
  "SyscallCost": b["syscall_getpid"]["extra_glyphs_per_call"], "YieldCost": b["yield_context_switch"]["extra_glyphs_per_yield"],
  "FrameBytes": b["yield_context_switch"]["register_frame_bytes"], "TimerCost": b["preemption"]["kernel_glyphs_per_timer_trap"],
  "Quantum": b["preemption"]["quantum_glyphs"], "Overhead": round(100 * b["preemption"]["overhead_fraction"], 1),
+ "SigilGuesses": b["sigil"]["random_guesses_tried"], "SigilAccepted": b["sigil"]["random_guesses_accepted"], "Avalanche": b["sigil"]["avalanche_mean_mac_bits_flipped"],
  "KernelBytes": b["images"]["kernel_image_bytes"], "Opcodes": b["images"]["veylith_opcodes"],
 }
 with open(os.path.join(root, "docs/paper/numbers.tex"), "w") as f:

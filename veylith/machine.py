@@ -1,6 +1,6 @@
 """Veylith v0 reference emulator: sequential, deterministic, single core."""
 from . import isa
-from .isa import MASK, to_signed, sext, CAUSE_ILLEGAL, CAUSE_PRIVILEGE, CAUSE_DIVZERO, CAUSE_MISALIGN, CAUSE_ACCESS, CAUSE_SYSCALL, CAUSE_TIMER
+from .isa import MASK, to_signed, sext, CAUSE_ILLEGAL, CAUSE_PRIVILEGE, CAUSE_DIVZERO, CAUSE_MISALIGN, CAUSE_ACCESS, CAUSE_SYSCALL, CAUSE_TIMER, CAUSE_CAPABILITY
 from . import image as imagemod
 
 CONSOLE_ADDR = (1 << 128) - 0x10000
@@ -10,6 +10,39 @@ GPU_BASE = (1 << 128) - 0x2000
 GPU_WIDTH, GPU_HEIGHT = 1280, 720
 GPU_REG_BYTES = 96
 GPU_FONT = {"0":[14,17,19,21,25,17,14],"1":[4,12,4,4,4,4,14],"2":[14,17,1,2,4,8,31],"3":[30,1,1,14,1,1,30],"4":[2,6,10,18,31,2,2],"5":[31,16,16,30,1,1,30],"6":[14,16,16,30,17,17,14],"7":[31,1,2,4,8,8,8],"8":[14,17,17,14,17,17,14],"9":[14,17,17,15,1,1,14],"A":[14,17,17,31,17,17,17],"B":[30,17,17,30,17,17,30],"C":[14,17,16,16,16,17,14],"D":[30,17,17,17,17,17,30],"E":[31,16,16,30,16,16,31],"F":[31,16,16,30,16,16,16],"G":[14,17,16,23,17,17,15],"H":[17,17,17,31,17,17,17],"I":[14,4,4,4,4,4,14],"J":[7,2,2,2,18,18,12],"K":[17,18,20,24,20,18,17],"L":[16,16,16,16,16,16,31],"M":[17,27,21,21,17,17,17],"N":[17,25,21,19,17,17,17],"O":[14,17,17,17,17,17,14],"P":[30,17,17,30,16,16,16],"Q":[14,17,17,17,21,18,13],"R":[30,17,17,30,20,18,17],"S":[15,16,16,14,1,1,30],"T":[31,4,4,4,4,4,4],"U":[17,17,17,17,17,17,14],"V":[17,17,17,17,17,10,4],"W":[17,17,17,21,21,21,10],"X":[17,17,10,4,10,17,17],"Y":[17,17,10,4,4,4,4],"Z":[31,1,2,4,8,16,31],".":[0,0,0,0,0,12,12],":":[0,12,12,0,12,12,0],"-":[0,0,0,31,0,0,0],"/":[1,2,2,4,8,8,16],"'":[12,12,8,0,0,0,0]}
+
+
+# ---- Sigil capabilities: a 128-bit, tag-free, MAC-authenticated capability --------------------------------------
+# [127:88] MAC (40) | [87:80] perms (bit0 READ, bit1 WRITE, bit2 NARROW) | [79:72] exp (region = 2**exp bytes) | [71:0] base (aligned to 2**exp)
+SIGIL_K = 0x9E3779B97F4A7C15F39CC0605CEDC835
+SIGIL_BODY = (1 << 88) - 1
+SIGIL_PERMS = 7
+
+
+def sigil_mac(key, body):
+    """Stand-in keyed PRF (4 rounds of multiply / xor-shift / key add). NOT claimed cryptographically secure."""
+    h = (body ^ key) & MASK
+    for k in range(4):
+        h = (h * SIGIL_K) & MASK
+        h ^= h >> 59
+        h = (h + key + k) & MASK
+    return h >> 88
+
+
+def sigil_make(key, base, perms, exp):
+    body = (perms << 80) | (exp << 72) | base
+    return (sigil_mac(key, body) << 88) | body
+
+
+def sigil_parse(key, cap):
+    """(base, perms, exp) if the capability is well formed and its MAC verifies under key, else None."""
+    body = cap & SIGIL_BODY
+    if (cap >> 88) != sigil_mac(key, body):
+        return None
+    perms, exp, base = (cap >> 80) & 0xFF, (cap >> 72) & 0xFF, cap & ((1 << 72) - 1)
+    if perms & ~SIGIL_PERMS or exp > 72 or base & ((1 << exp) - 1):
+        return None
+    return base, perms, exp
 
 
 class Trap(Exception):
@@ -205,12 +238,43 @@ class Machine:
             self._write(rd, 128 - a.bit_length())
         elif name == "popc":
             self._write(rd, bin(a).count("1"))
-        elif name in _LOADS:
-            size, signed = _LOADS[name]
-            val = self._load((a + simm) & MASK, size)
-            self._write(rd, sext(val, size * 8) if signed else val)
-        elif name in _STORES:
-            self._store((a + simm) & MASK, _STORES[name], b)
+        elif name == "cmint":
+            self._need_kernel()
+            if b >> 16 or (b & 0xFF) & ~SIGIL_PERMS or ((b >> 8) & 0xFF) > 72 or a >> 72 or a & ((1 << ((b >> 8) & 0xFF)) - 1):
+                raise Trap(CAUSE_CAPABILITY, a)
+            self._write(rd, sigil_make(self.csr[11], a, b & 0xFF, (b >> 8) & 0xFF))
+        elif name == "cnarrow":
+            p = sigil_parse(self.csr[11], a)
+            if p is None:
+                raise Trap(CAUSE_CAPABILITY, a)
+            base, perms, exp = p
+            np_, ne, off = b & 0xFF, (b >> 8) & 0xFF, b >> 16
+            if (np_ & ~perms) or not perms & 4 or ne > exp or off >= (1 << exp) or off & ((1 << ne) - 1) or off + (1 << ne) > (1 << exp):
+                raise Trap(CAUSE_CAPABILITY, a)
+            self._write(rd, sigil_make(self.csr[11], base + off, np_, ne))
+        elif name == "cinfo":
+            p = sigil_parse(self.csr[11], a)
+            self._write(rd, 0 if p is None else (1 << 127) | (a & SIGIL_BODY))
+        elif name in _CLOADS or name in _CSTORES:
+            size = _CLOADS[name] if name in _CLOADS else _CSTORES[name]
+            p = sigil_parse(self.csr[11], a)
+            off = to_signed(simm)
+            need = 1 if name in _CLOADS else 2
+            if p is None or not p[1] & need or off < 0 or off + size > (1 << p[2]):
+                raise Trap(CAUSE_CAPABILITY, a)
+            if name in _CLOADS:
+                self._write(rd, self._load(p[0] + off, size))
+            else:
+                self._store(p[0] + off, size, b)
+        elif name in _LOADS or name in _STORES:
+            if self.priv == 1 and self.csr[12]:
+                raise Trap(CAUSE_CAPABILITY, (a + simm) & MASK)       # capability mode: raw memory access is forbidden
+            if name in _LOADS:
+                size, signed = _LOADS[name]
+                val = self._load((a + simm) & MASK, size)
+                self._write(rd, sext(val, size * 8) if signed else val)
+            else:
+                self._store((a + simm) & MASK, _STORES[name], b)
         elif name == "jmp":
             newpc = (pc + isa.GLYPH_BYTES * to_signed(simm)) & MASK
         elif name == "jal":
@@ -306,6 +370,8 @@ _ALUI = {
 }
 _LOADS = {"lb": (1, 0), "lh": (2, 0), "lw": (4, 0), "ld": (8, 0), "lq": (16, 0),
           "lbs": (1, 1), "lhs": (2, 1), "lws": (4, 1), "lds": (8, 1)}
+_CLOADS = {"clb": 1, "clq": 16}
+_CSTORES = {"csb": 1, "csq": 16}
 _STORES = {"sb": 1, "sh": 2, "sw": 4, "sd": 8, "sq": 16}
 _BRANCH = {"beq": lambda a, b: a == b, "bne": lambda a, b: a != b,
            "blt": lambda a, b: to_signed(a) < to_signed(b), "bge": lambda a, b: to_signed(a) >= to_signed(b),

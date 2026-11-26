@@ -92,17 +92,24 @@ _T = [
     ("tret", 0x71, "none", "kernel only: priv = tpriv; pc = tpc"),
     ("csrr", 0x72, "csrr", "kernel only: rd = csr[imm]"),
     ("csrw", 0x73, "csrw", "kernel only: csr[imm] = ra"),
+    ("cmint", 0x80, "rrr", "kernel only: rd = sigil(base=ra, perms|exp<<8 = rb), MAC under csr ckey; CAPABILITY trap if misaligned"),
+    ("cnarrow", 0x81, "rrr", "rd = sub-sigil of ra: rb = perms | exp<<8 | offset<<16; may only shrink perms and region (needs NARROW)"),
+    ("cinfo", 0x82, "rr", "rd = (1<<127) | low 88 bits of sigil ra if its MAC verifies, else 0 (never traps)"),
+    ("clb", 0x83, "ld", "rd = zext(mem8[base(ra) + imm]) through sigil ra: needs READ, 0 <= imm < 2^exp"),
+    ("clq", 0x84, "ld", "rd = mem128[base(ra) + imm] through sigil ra"),
+    ("csb", 0x85, "st", "mem8[base(ra) + imm] = rb through sigil ra: needs WRITE"),
+    ("csq", 0x86, "st", "mem128[base(ra) + imm] = rb through sigil ra"),
 ]
 BY_NAME = {n: (c, f, s) for n, c, f, s in _T}
 BY_CODE = {c: (n, f, s) for n, c, f, s in _T}
 assert len(BY_NAME) == len(BY_CODE) == len(_T)
 
 CSRS = {"priv": 0, "tvec": 1, "tpc": 2, "tcause": 3, "tval": 4, "tpriv": 5,
-        "abase": 6, "alim": 7, "cycles": 8, "scratch": 9, "timecmp": 10}
+        "abase": 6, "alim": 7, "cycles": 8, "scratch": 9, "timecmp": 10, "ckey": 11, "cmode": 12}
 CSR_READONLY = {0, 8}
 
-CAUSES = {1: "ILLEGAL", 2: "PRIVILEGE", 3: "DIVZERO", 4: "MISALIGN", 5: "ACCESS", 6: "SYSCALL", 7: "TIMER"}
-CAUSE_ILLEGAL, CAUSE_PRIVILEGE, CAUSE_DIVZERO, CAUSE_MISALIGN, CAUSE_ACCESS, CAUSE_SYSCALL, CAUSE_TIMER = 1, 2, 3, 4, 5, 6, 7
+CAUSES = {1: "ILLEGAL", 2: "PRIVILEGE", 3: "DIVZERO", 4: "MISALIGN", 5: "ACCESS", 6: "SYSCALL", 7: "TIMER", 8: "CAPABILITY"}
+CAUSE_ILLEGAL, CAUSE_PRIVILEGE, CAUSE_DIVZERO, CAUSE_MISALIGN, CAUSE_ACCESS, CAUSE_SYSCALL, CAUSE_TIMER, CAUSE_CAPABILITY = 1, 2, 3, 4, 5, 6, 7, 8
 
 REG_ALIASES = {"zero": 0, "sp": 127, "lr": 128}
 

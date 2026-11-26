@@ -13,7 +13,8 @@
 .equ USER_SIZE, 0x10000
 .equ FRAME,     0x6000
 .equ DIGITS,    0x7F00          ; 40-byte scratch for decimal conversion (end of buffer)
-.equ CURRENT,     0x5100          ; index of the running task slot
+.equ CURRENT,     0x7010          ; index of the running task slot (kernel data lives at 0x7000..0x7FFF, above the trap frame)
+.equ LINKSAVE,    0x7000
 .equ TASKS,       0x8000          ; task table: 8 slots, kept outside the user aperture
 .equ TSTRIDE,     0x900
 .equ NTASKS,      8
@@ -23,8 +24,10 @@
 .equ T_AUX,       48              ; join: the tid awaited
 .equ T_MBFULL,    64
 .equ T_MBVAL,     80              ; one-deep 128-bit mailbox
+.equ T_CMODE,     96              ; 1 = capability mode: raw loads/stores trap, only Sigil capabilities reach memory
 .equ T_FRAME,     128             ; saved copy of the 129-quad register frame
 .equ FRAMEQ,      129
+.equ CKEY_VALUE,   0x5349474C4B45592D56455945564559A  ; boot-time Sigil key: a constant so runs stay deterministic (a real machine needs an entropy source)
 .equ QUANTUM,      3000            ; preemption slice, in retired Glyphs (timecmp = cycles + QUANTUM)
 .equ GPU,       0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFE000
 
@@ -36,6 +39,8 @@ _start:
     la   v1, banner
     call puts
     call desktop_init
+    li   v1, CKEY_VALUE
+    csrw ckey, v1
     li   v1, 1
     sq   [v0 + TASKS + T_STATE], v1      ; task 1 (slot 0) is the booting program
     csrr v1, cycles
@@ -54,7 +59,7 @@ _start:
 ; SAND Desktop 128 initial guest-rendered framebuffer scene, 1280x720.
 ; gpu_rect: v1=x, v2=y, v3=width, v4=height, v5=RGBA word.
 desktop_init:
-    sq [v0 + 0x5000], v128       ; preserve caller link across nested gpu_rect calls
+    sq [v0 + LINKSAVE], v128       ; preserve caller link across nested gpu_rect calls
     li v1, 0
     li v2, 0
     li v3, 1280
@@ -199,7 +204,7 @@ desktop_init:
     li v4, 16
     li v5, 0xFFEAF0F7
     call gpu_text
-    lq v128, [v0 + 0x5000]
+    lq v128, [v0 + LINKSAVE]
     ret
 
 gpu_text:
@@ -377,6 +382,12 @@ trap_entry:
     beq  v1, v17, sys_send
     li   v17, 9
     beq  v1, v17, sys_recv
+    li   v17, 10
+    beq  v1, v17, sys_capget
+    li   v17, 11
+    beq  v1, v17, sys_cmode
+    li   v17, 12
+    beq  v1, v17, sys_cwrite
     li   v16, -1
     jmp  syscall_return
 
@@ -413,7 +424,59 @@ sys_getcycles:
     csrr v16, cycles
     jmp  syscall_return
 
+; ---- Sigil capabilities (docs/18) ----
+;  10 capget(base, exp, perms)  -> a capability for [base, base + 2^exp) inside the aperture (perms: 1 READ, 2 WRITE, 4 NARROW), or -1
+;  11 cmode()                   -> 0; the task (and the threads it spawns) can from now on reach memory only through capabilities
+;  12 cwrite(cap, len)          -> like write(), but the buffer is named by a READ capability instead of a raw pointer
+sys_capget:
+    li   v17, 16
+    bltu v17, v3, task_bad          ; region larger than the 64 KiB aperture
+    li   v17, 8
+    bltu v17, v4, task_bad          ; perms must be within READ|WRITE|NARROW
+    li   v17, USER_BASE
+    bltu v2, v17, task_bad
+    li   v18, 1
+    shl  v18, v18, v3               ; region size
+    add  v19, v2, v18
+    li   v17, USER_BASE + USER_SIZE
+    bltu v17, v19, task_bad         ; region must lie inside the aperture
+    addi v19, v18, -1
+    and  v19, v2, v19
+    bne  v19, v0, task_bad          ; and be naturally aligned
+    shli v20, v3, 8
+    or   v20, v20, v4
+    cmint v16, v2, v20
+    jmp  syscall_return
+sys_cmode:
+    lq   v24, [v0 + CURRENT]
+    li   v17, TSTRIDE
+    mul  v25, v24, v17
+    li   v17, TASKS
+    add  v25, v25, v17
+    li   v18, 1
+    sq   [v25 + T_CMODE], v18
+    li   v16, 0
+    jmp  syscall_return
+sys_cwrite:
+    cinfo v17, v2                   ; never traps: 0 if the capability does not verify
+    beq  v17, v0, task_bad
+    shri v18, v17, 80
+    andi v18, v18, 1
+    beq  v18, v0, task_bad          ; needs READ
+    shri v19, v17, 72
+    andi v19, v19, 255              ; exp
+    li   v20, 1
+    shl  v20, v20, v19
+    bltu v20, v3, task_bad          ; len beyond the region
+    shli v2, v17, 56
+    shri v2, v2, 56                 ; base = low 72 bits
+    jmp  sys_write
 syscall_return:
+    lq   v17, [v0 + CURRENT]        ; install the returning task's capability mode
+    li   v18, TSTRIDE
+    mul  v17, v17, v18
+    lq   v17, [v17 + TASKS + T_CMODE]
+    csrw cmode, v17
     csrr v17, cycles                ; every return to user mode re-arms the one-shot timer
     addi v17, v17, QUANTUM
     csrw timecmp, v17
@@ -659,6 +722,11 @@ spawn_scan:
     bne  v28, v17, spawn_scan
     jmp  task_bad                   ; table full
 spawn_found:
+    lq   v19, [v0 + CURRENT]        ; the child inherits the spawner's capability mode
+    li   v17, TSTRIDE
+    mul  v19, v19, v17
+    lq   v19, [v19 + TASKS + T_CMODE]
+    sq   [v25 + T_CMODE], v19
     li   v18, 1
     sq   [v25 + T_STATE], v18
     sq   [v25 + T_RESULT], v4       ; the first v1 is the argument
@@ -1016,7 +1084,7 @@ sched_slot:
     bne  v27, v0, sched_next
     la   v1, msg_deadlock           ; nothing can run: every task is blocked
     call puts
-    li   v1, 136
+    li   v1, 200
     halt
 sched_run:
     sq   [v0 + CURRENT], v28
