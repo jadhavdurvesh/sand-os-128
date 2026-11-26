@@ -69,11 +69,14 @@ Requires Python 3.11+ for image assembly and GCC/Clang for the hosted machine.
 
 ```bash
 python3 -m veylith boot                       # Kernelloom boots examples/factorial.s on the emulator
-python3 -m veylith boot examples/badptr.s     # a user fault caught by the kernel\npython3 -m veylith boot examples/process_info.s # getpid/getcycles syscall checks
+python3 -m veylith boot examples/badptr.s     # a user fault caught by the kernel
+python3 -m veylith boot examples/process_info.s # getpid/getcycles syscall checks
+python3 -m veylith boot examples/threads.s    # three threads send 128-bit results to task 1
+python3 -m veylith boot examples/pingpong.s   # round-robin yield: ABABABAB
 python3 -m veylith asm prog.s -o prog.vyl     # assemble
 python3 -m veylith dis prog.vyl               # disassemble
 python3 -m veylith run kernel.vyl user.vyl --trace trace.jsonl
-python3 -m unittest discover -s tests         # 50 tests
+python3 -m unittest discover -s tests         # 35 tests
 ```
 
 ## Repository layout
@@ -83,7 +86,7 @@ python3 -m unittest discover -s tests         # 50 tests
 ├── docs/                 Architecture specifications and design records
 ├── architecture/         Machine-readable glyph table (generated from veylith/isa.py)
 ├── veylith/              Reference emulator, assembler/disassembler, image format, CLI
-├── kernel/               Kernelloom v0 (Veylith assembly)
+├── kernel/               Kernelloom (Veylith assembly)
 ├── examples/             User programs for Kernelloom
 ├── tests/                Conformance and integration tests
 ├── boot/ toolchain/      (future)
@@ -133,7 +136,7 @@ Use **Actions → Veylith CI → Run workflow** to select a scenario and runtime
 | Veylith 128-Native v1 base profile | Accepted; implemented; verified in the emulator |
 | Reference emulator | Implemented (Python, single core, deterministic, Tracebook) |
 | Assembler / disassembler / image format | Implemented |
-| Kernelloom v1 | Implemented: user mode, aperture protection, 4 syscalls, fault reporting (single-task; no scheduler) |
+| Kernelloom v2 | Implemented: user mode, aperture protection, fault reporting, cooperative threads (spawn/yield/join), 128-bit message passing, deadlock detection (no preemption: there are no interrupts yet) |
 | Paging, interrupts, atomics, floating point | Not implemented |
 | Compiler, filesystem, devices beyond a console | Not implemented |
 | Hardware | Not planned |
