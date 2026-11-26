@@ -100,6 +100,8 @@ _T = [
     ("csb", 0x85, "st", "mem8[base(ra) + imm] = rb through sigil ra: needs WRITE"),
     ("csq", 0x86, "st", "mem128[base(ra) + imm] = rb through sigil ra"),
     ("cseal", 0x87, "rr", "rd = ra with the SEALED bit (perm 0x80) set: an opaque token that cannot load, store or narrow"),
+    ("ccall", 0x89, "rr", "gate call: ra must be a valid sealed GATE sigil; clink = next pc, rd = the gate unsealed (data authority), pc = gate base; traps if a call is already active"),
+    ("cretn", 0x8A, "none", "gate return: pc = clink, clink = 0; traps if no call is active"),
     ("cunseal", 0x88, "rr", "kernel only: rd = ra with SEALED cleared; CAPABILITY trap if ra is not a valid sealed sigil"),
 ]
 BY_NAME = {n: (c, f, s) for n, c, f, s in _T}
@@ -107,7 +109,7 @@ BY_CODE = {c: (n, f, s) for n, c, f, s in _T}
 assert len(BY_NAME) == len(BY_CODE) == len(_T)
 
 CSRS = {"priv": 0, "tvec": 1, "tpc": 2, "tcause": 3, "tval": 4, "tpriv": 5,
-        "abase": 6, "alim": 7, "cycles": 8, "scratch": 9, "timecmp": 10, "ckey": 11, "cmode": 12}
+        "abase": 6, "alim": 7, "cycles": 8, "scratch": 9, "timecmp": 10, "ckey": 11, "cmode": 12, "clink": 13}
 CSR_READONLY = {0, 8}
 
 CAUSES = {1: "ILLEGAL", 2: "PRIVILEGE", 3: "DIVZERO", 4: "MISALIGN", 5: "ACCESS", 6: "SYSCALL", 7: "TIMER", 8: "CAPABILITY"}

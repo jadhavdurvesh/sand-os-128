@@ -148,6 +148,18 @@ sys 0"""
     R["sigil"] = {"glyphs_per_raw_load_iteration": round(raw(raw_loop).cycles / 1000, 2), "glyphs_per_capability_load_iteration": round((raw(cap_loop).cycles - 6) / 1000, 2),
                   "mac_bits": 40, "random_guesses_tried": guesses, "random_guesses_accepted": accepted,
                   "expected_forgery_probability": "2^-40 per attempt", "avalanche_mean_mac_bits_flipped": round(flips / trials, 2), "avalanche_ideal": 20.0}
+    # 4c. Sigil call gates versus kernel-mediated calls (per call-and-return, loop overhead subtracted)
+    N = 100                                          # 100 gate calls stay well inside one 3000-Glyph timer quantum
+    tail = "li v1, 2\nli v2, 0\nsys 0\n"
+    P = ".org 0x10000\nli sp, 0x1F000\n"
+    gate_src = (P + f"la v2, svc\nli v3, 8\nli v4, 15\nli v1, 10\nsys 0\ncseal v30, v1\nli v9, {N}\nl:\nccall v20, v30\naddi v9, v9, -1\nbne v9, v0, l\n" + tail +
+                ".align 256\nsvc:\nclq v6, [v20 + 128]\naddi v6, v6, 1\ncsq [v20 + 128], v6\nmv v1, v6\ncretn\n.space 160\n")
+    gate = boot(gate_src).cycles
+    gate_base = boot(gate_src.replace("ccall v20, v30\n", "")).cycles
+    R["sigil_gate"] = {"calls_measured": N, "glyphs_per_gate_call_empty_service": 2,   # ccall + cretn
+                       "glyphs_per_gate_call_counter_service": round((gate - gate_base) / N, 2),
+                       "glyphs_per_null_syscall_round_trip": R["syscall_getpid"]["extra_glyphs_per_call"],
+                       "glyphs_per_yield_context_switch": R["yield_context_switch"]["extra_glyphs_per_yield"]}
     # 5. image sizes
     kb = asm.assemble(KERNEL)
     R["images"] = {"kernel_image_bytes": len(kb), "kernel_syscalls": 12, "veylith_opcodes": len(isa.BY_NAME)}

@@ -127,7 +127,7 @@ class NativeMachine(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             exe=os.path.join(d,"vvm");r=subprocess.run([cc,"-std=c11","-O2","-o",exe,"native/veylith-vm.c"],capture_output=True)
             if r.returncode:self.skipTest("C machine did not build")
-            for ex in ("hello","factorial","native128","badptr","process_info","threads","pingpong","threadedge","threaddead","preempt","sigil","sigilforge","sigilraw"):
+            for ex in ("hello","factorial","native128","badptr","process_info","threads","pingpong","threadedge","threaddead","preempt","sigil","sigilforge","sigilraw","gate","gateswitch"):
                 img=os.path.join(d,ex+".img");
                 with open(img,"wb") as f:f.write(disk.build(read("kernel/kernelloom.s"),read(f"examples/{ex}.s")))
                 c=subprocess.run([exe,img],capture_output=True,text=True);m=Kernelloom.boot(Kernelloom,f"examples/{ex}.s")
@@ -187,6 +187,26 @@ class Sigil(unittest.TestCase):
         src=Timer.PRE+"tret\n.org 0x4000\ncunseal v6, v5\nhalt\nhandler:\ncsrr v121, tcause\nhalt"
         pre="li v1, 0x77\ncsrw ckey, v1\nli v2, 0x4800\nli v3, 0x0707\ncmint v4, v2, v3\ncseal v5, v4\n"
         self.assertEqual(run(src.replace("tret",pre+"tret",1),steps=1000).v[121],isa.CAUSE_PRIVILEGE)
+    def gate_machine(self,user,svc,perms=0x0F):
+        pre=Timer.PRE.replace("tret","")+f"li v1, 0x77\ncsrw ckey, v1\nli v2, 0x4800\nli v3, {perms|8<<8}\ncmint v4, v2, v3\ncseal v5, v4\ntret\n"
+        src=pre+".org 0x4000\n"+user+"\nsys 1\n.org 0x4800\n"+svc+"\nhandler:\ncsrr v121, tcause\ncsrr v122, clink\nhalt"
+        return run(src,steps=2000)
+    def test_gate_call_and_return(self):
+        m=self.gate_machine("ccall v6, v5\ncinfo v7, v6","li v9, 42\ncretn")
+        self.assertEqual((m.v[9],m.v[121],m.v[122]),(42,isa.CAUSE_SYSCALL,0))        # the callee ran, control came back, the link is clear
+        self.assertEqual(m.v[7],(1<<127)|(7<<80)|(8<<72)|0x4800)                      # callee's authority: the region, unsealed, no GATE bit
+    def test_gate_faults(self):
+        for name,user,svc,perms in (("unsealed","ccall v6, v4","cretn",0x0F),("forged","li v7, 5\nccall v6, v7","cretn",0x0F),
+                                    ("sealed but not a gate","ccall v6, v5","cretn",0x07),("nested call","ccall v6, v5","ccall v6, v5\ncretn",0x0F),
+                                    ("return with no call","cretn","cretn",0x0F)):
+            m=self.gate_machine(user,svc,perms);self.assertEqual(m.v[121],isa.CAUSE_CAPABILITY,name)
+    def test_a_gate_exposes_only_its_entry_point(self):
+        # a sealed gate cannot be used to load, store, narrow or jump anywhere but the region base
+        for src in ("clb v7, [v5 + 0]","csb [v5 + 0], v0","li v6, 5\ncnarrow v7, v5, v6","jr v5"):
+            self.assertEqual(self.gate_machine(src,"cretn").v[121]!=isa.CAUSE_SYSCALL,True,src)
+    def test_kernelloom_gate_examples(self):
+        for ex,msg in (("examples/gate.s","gate: ok\n"),("examples/gateswitch.s","gate switching: ok\n")):
+            m=Kernelloom.boot(Kernelloom,ex);self.assertIn(msg,m.console.decode(),ex);self.assertEqual((m.stop_reason,m.exit_code),("halt",0),ex)
     def test_only_the_kernel_can_mint(self):
         src=Timer.PRE+"tret\n.org 0x4000\nli v2, 0x4000\nli v3, 0x0707\ncmint v4, v2, v3\nhalt\nhandler:\ncsrr v121, tcause\nhalt"
         self.assertEqual(run(src,steps=1000).v[121],isa.CAUSE_PRIVILEGE)
@@ -212,7 +232,7 @@ class Sigil(unittest.TestCase):
     def test_capget_validates_regions_and_capability_mode_is_inherited(self):
         pre=".org 0x10000\n_start:\nli sp, 0x1F000\n"
         def sysc(n,*args):return "".join(f"li v{i+2}, {a}\n" for i,a in enumerate(args))+f"li v1, {n}\nsys 0\n"
-        bad=[(0x10000,17,1),(0x10000,6,9),(0xF000,6,1),(0x10010,6,1),(0x1FFC0,7,1)]      # too big, bad perms, below aperture, misaligned, past the end
+        bad=[(0x10000,17,1),(0x10000,6,16),(0xF000,6,1),(0x10010,6,1),(0x1FFC0,7,1)]      # too big, bad perms, below aperture, misaligned, past the end
         src=pre+"".join(sysc(10,*a)+"li v9, -1\nbne v1, v9, wrong\n" for a in bad)+sysc(10,0x10000,6,7)+"cinfo v5, v1\nbeq v5, v0, wrong\nli v2, 0\nli v1, 2\nsys 0\nwrong:\nli v2, 1\nli v1, 2\nsys 0\n"
         m=Machine(1<<20);m.load(asm.assemble(read("kernel/kernelloom.s")));m.load(asm.assemble(src),set_entry=False);m.run(2_000_000);self.assertEqual((m.stop_reason,m.exit_code),("halt",0))
     def test_cap_cause_name(self):self.assertEqual(isa.CAUSES[8],"CAPABILITY")
