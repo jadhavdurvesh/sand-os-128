@@ -1,0 +1,35 @@
+{
+  "factorial_34": {
+    "native128_glyphs": 107,
+    "limb64_glyphs": 280,
+    "ratio": 2.62,
+    "same_result": true
+  },
+  "constants": {
+    "li_small_glyphs": 1,
+    "li_full128_glyphs": 2,
+    "immediate_bits": 88,
+    "bytes_per_glyph": 16
+  },
+  "syscall_getpid": {
+    "extra_glyphs_per_call": 275.1
+  },
+  "yield_context_switch": {
+    "extra_glyphs_per_yield": 864.5,
+    "register_frame_bytes": 2064,
+    "quads_copied_per_switch": 258
+  },
+  "preemption": {
+    "total_glyphs": 70685,
+    "boot_glyphs_before_first_user_glyph": 666,
+    "timer_traps": 18,
+    "kernel_glyphs_per_timer_trap": 850.5,
+    "quantum_glyphs": 3000,
+    "overhead_fraction": 0.221
+  },
+  "images": {
+    "kernel_image_bytes": 19964,
+    "kernel_syscalls": 9,
+    "veylith_opcodes": 59
+  }
+}

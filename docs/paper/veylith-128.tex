@@ -1,0 +1,88 @@
+\documentclass[10pt,a4paper]{article}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[margin=2.2cm]{geometry}
+\usepackage{lmodern}
+\usepackage{booktabs,array,amsmath,amssymb}
+\usepackage[expansion=false]{microtype}
+\usepackage[numbers]{natbib}
+\usepackage[hidelinks]{hyperref}
+\input{numbers.tex}
+\title{Veylith: A Clean-Sheet 128-Bit Instruction Set and Kernel,\\Specified, Implemented Twice, and Measured}
+\author{Durvesh Jadhav\\Independent researcher\\ORCID 0009-0003-3779-2857}
+\date{Draft of November 2026 --- software-emulated architecture; no silicon}
+\begin{document}
+\maketitle
+\begin{abstract}
+We describe Veylith, an experimental instruction-set architecture in which \emph{every} architectural quantity is 128 bits wide: the 128 general-purpose registers, the fixed-length instruction (the \emph{Glyph}), the virtual address, the pointer, the program counter, the interrupt deadline and the system registers. A small kernel (Kernelloom), written in Veylith assembly, provides user/kernel privilege, aperture-based memory protection, preemptive multitasking driven by a 128-bit timer, 128-bit message passing and deadlock detection. The architecture is implemented twice, independently: a Python reference machine on arbitrary-precision integers and a C machine on native \texttt{unsigned \_\_int128}. We validate them against each other with \FuzzPrograms{} random programs with \FuzzDivergences{} divergences in output or retired-instruction count, plus \UnitTests{} unit and integration tests. Measurements on the deterministic machine show that native 128-bit multiplication reduces the instruction count of a 34! computation by a factor of \FactRatio{} against a 64-bit-limb emulation, and that the architecture's principal cost is context switching: a full register-file switch costs about \YieldCost{} retired Glyphs even after unrolling. We state precisely what is \emph{not} shown: there is no memory-management unit, no atomics, no floating point, no compiler, no formal semantics, and no timing model, so none of the results are claims about performance on hardware. We close with a gap analysis and a research agenda.
+\end{abstract}
+
+\section{Motivation and question}
+Address and register widths have grown by factors of two at long intervals, and each transition was driven by a concrete limit. The question here is deliberately narrow: \emph{if a machine were designed from the beginning with a uniform 128-bit width, what does the architecture look like, what does it cost, and what does it make easy?} The 128-bit integer is already useful in software (identifiers, cryptographic field elements, nanosecond timestamps with long range, exact decimal arithmetic), and a 128-bit address is a plausible substrate for ideas that need spare pointer bits (capabilities with bounds, tagging, single-level storage). We do not claim any of these benefits is demonstrated by this work; Section~\ref{sec:gaps} lists them as hypotheses.
+
+Related work we build on conceptually: the RISC-V specification reserves a 128-bit base integer ISA (RV128I) but leaves it unspecified beyond the integer subset \citep{riscv}; CHERI uses 128-bit capabilities as \emph{data} on a 64-bit machine \citep{cheri}; the IBM AS/400 line used 128-bit pointers in its machine interface above the hardware \citep{soltis}; and 5-level paging extends x86-64 virtual addresses to 57 bits \citep{intel5}. Veylith differs in making 128 bits the width of the whole machine (registers, instructions, program counter and addresses) rather than of one datatype or of a software layer. (Reference details should be re-checked against the originals before submission.)
+
+\section{Architecture}
+\paragraph{State.} 128 writable registers $v_1..v_{128}$ plus a hard-wired zero slot $v_0$; $v_{127}$ and $v_{128}$ are the ABI stack pointer and link register. The register file is 16\,384 bits. Integer arithmetic is modulo $2^{128}$; signed division truncates toward zero.
+
+\paragraph{Glyph.} Instructions are a fixed 128 bits: 16-bit opcode, three 8-bit register fields and an 88-bit immediate. Unused and reserved bits must be zero, otherwise the Glyph is illegal; register indices above 128 are illegal. \Opcodes{} opcodes cover arithmetic, shifts and rotates, \texttt{mulh}, signed and unsigned division, comparison, byte to quad loads and stores, branches and jumps, and four privileged operations. A full 128-bit constant takes two Glyphs (\texttt{ldk} then \texttt{shk}); anything that fits a signed 88-bit immediate takes one.
+
+\paragraph{Addresses.} Pointers, effective addresses, the program counter and trap values are 128 bits. The machine models the whole $2^{128}$ virtual space over a bounded physical RAM: an access is valid only if it lands in implemented RAM or a defined device window, and an effective-address overflow traps. Virtual width is therefore independent of installed memory.
+
+\paragraph{Privilege and protection.} Two privilege levels. User code is confined to a 128-bit \emph{aperture} (\texttt{abase}, \texttt{alim}); this is segment-style protection, not paging. A trap saves the PC, cause, value and previous privilege in \texttt{tpc}, \texttt{tcause}, \texttt{tval}, \texttt{tpriv}.
+
+\paragraph{Timer interrupt (first asynchronous event).} A 128-bit CSR \texttt{timecmp} holds a deadline against the retired-Glyph counter; zero disarms it. Before fetching a Glyph, if privilege is user, \texttt{timecmp} is non-zero and the counter has reached it, the machine clears \texttt{timecmp} (one-shot) and traps with cause \textsc{timer} and \texttt{tpc} set to the un-executed Glyph. Delivery only in user mode makes masking implicit: the non-reentrant kernel is never interrupted and no interrupt-enable bit or nesting rules are needed. Because time is a count of retired Glyphs, every run is exactly reproducible.
+
+\section{Kernelloom}
+Kernelloom is about \KernelBytes{} bytes of Veylith assembly. It provides write, exit, getpid, getcycles and, for threads sharing the user aperture, spawn, yield, join, send and recv (nine system calls). Tasks are scheduled round-robin over eight slots; a task's complete \FrameBytes-byte register frame is saved and restored on every switch, so all 127 writable registers keep all 128 bits across switches. The timer re-arms every \Quantum{} Glyphs and preempts. Messages are one-deep mailboxes carrying a full 128-bit register; \texttt{send} is non-blocking and \texttt{recv} blocks. If no task is runnable the kernel reports a deadlock and halts.
+
+\section{Implementation and validation}
+\paragraph{Two independent machines.} The Python machine uses unbounded integers masked to 128 bits; the C machine uses native \texttt{unsigned \_\_int128}. They share no execution code, and the C machine is also compiled to WebAssembly for a browser front end.
+\paragraph{Differential testing.} A generator emits random programs mixing all ALU operations (division guarded against zero), full-width and boundary constants, every load/store width, forward branches and a 256-byte memory window. Each program ends by folding all data registers and the window into one 128-bit hash printed as 32 hex digits. Over \FuzzPrograms{} programs (about 1.9 million retired Glyphs) the two machines agreed on every hash and on the exact retired-Glyph count: \FuzzDivergences{} divergences. All ten example programs, including the preemption and threading examples, also match to the Glyph. The set of unit and integration tests (\UnitTests{} in all) covers encoding round trips, reserved-bit and register-range rejection, full-width constants, overflow, division edge cases, alignment, high-address faults, privilege faults, image-format rejection, disk checksums, the kernel's system calls, register preservation across switches, edge cases of spawn and send, deadlock reporting and timer semantics (one-shot, user-only, 128-bit deadline).
+\paragraph{Limits of this validation.} Agreement of two implementations written by one author from one specification detects implementation slips, not specification errors; the fuzzer does not generate traps, privileged operations or timer races; there is no formal semantics and no machine-checked proof.
+
+\section{Measurements}
+All counts are retired Glyphs on the deterministic machine and say nothing about wall-clock speed. Source: \texttt{tools/bench.py}.
+\begin{table}[h]\centering
+\begin{tabular}{@{}lr@{}}\toprule
+Measurement & Value\\\midrule
+34! with native 128-bit \texttt{mul} (Glyphs) & \FactNative\\
+34! with 64-bit limbs emulating the same result (Glyphs) & \FactLimb\\
+Instruction-count ratio, emulated / native & \FactRatio$\times$\\
+Extra Glyphs for one \texttt{getpid} system call & \SyscallCost\\
+Extra Glyphs per \texttt{yield} (full task switch) & \YieldCost\\
+Kernel Glyphs per timer preemption & \TimerCost\\
+Preemption overhead at a \Quantum-Glyph quantum & \Overhead\%\\
+Register frame saved per task (bytes) & \FrameBytes\\\bottomrule
+\end{tabular}
+\caption{Measured costs. The limb emulation multiplies two 64-bit limbs per step using a 128-bit product register; a real 64-bit machine needs more Glyphs per limb, so the ratio is a lower bound for that comparison.}
+\end{table}
+\paragraph{Reading the results.} Native 128-bit arithmetic wins where the data is 128 bits wide, as expected. The surprise is the cost side. The 128-register, 128-bit file makes a context switch expensive: our first kernel copied frames in a loop and spent about 1\,900 Glyphs per switch (38.6\% overhead at a 3000-Glyph quantum); unrolling the copies halved it to the figure above. The floor is set by the architecture: 129 quads must be moved out and 129 in, around the trap's own save and restore of the same registers. This is the clearest quantitative finding of the work, and it motivates the proposals below.
+
+\section{Gap analysis and research agenda}\label{sec:gaps}
+\begin{description}
+\item[Virtual memory.] Only aperture protection exists. A 128-bit address with 128-bit page-table entries would leave tens of spare bits per entry for capabilities, tags or permission domains, but the number of translation levels needed for a sparse 128-bit space (or an alternative such as hashed or segmented translation) is an open design question. \emph{Not implemented.}
+\item[Context-switch cost.] Proposals to evaluate: a dirty-register mask maintained by hardware, banked register windows, or block-move Glyphs that transfer several quads per instruction. Each must be modelled for its effect on the (so far unmodelled) microarchitecture.
+\item[Code density.] A 16-byte Glyph is simple to decode and carries an 88-bit immediate, but most immediates are small. Density against a compressed encoding has not been measured on real programs.
+\item[Pointer and data footprint.] 128-bit pointers double the footprint of pointer-heavy structures relative to 64 bits. Not measured: there is no compiler and no realistic workload.
+\item[Atomics, multi-core, memory model.] Single core, deterministic, no atomics. A 128-bit compare-and-swap is natural; its memory-model consequences are untreated.
+\item[Floating point and vectors; numerical systems.] None implemented. The repository's numerical-systems programme (base-60, balanced ternary, residue systems) is a research plan, not a result.
+\item[Device interrupts and I/O.] One interrupt source. The console and framebuffer are memory-mapped windows in the top of the address space.
+\item[Toolchain.] An assembler, disassembler and image format exist; no compiler. The kernel is hand-unrolled assembly sitting below a fixed scratch address (checked by a test), which is fragile.
+\item[Verification.] No formal semantics. Candidate next step: a machine-readable executable semantics from which both machines and the specification tables are generated, replacing the present two-by-hand cross-check.
+\item[Security.] No threat model or evaluation of the aperture, the syscall boundary or the message-passing interface has been performed.
+\item[Hardware.] Everything is software emulation. No claim about area, frequency or energy is made.
+\end{description}
+
+\section{Conclusion}
+Veylith shows that a uniformly 128-bit machine and a preemptive, message-passing kernel can be specified, implemented twice, and shown consistent under heavy random testing at small scale. It also shows, quantitatively, where such a design hurts first: the size of the architectural state. The work does not establish performance, security or practical benefit; Section~\ref{sec:gaps} is the list of what would.
+
+\paragraph{Reproducibility.} Everything is in the repository: \texttt{python -m unittest discover -s tests}; \texttt{VEYLITH\_FUZZ\_N=3000 python -m unittest tests.test\_differential}; \texttt{python tools/evidence.py} regenerates \texttt{docs/paper/evidence.json}; \texttt{python tools/paper\_numbers.py} regenerates the numbers used in this paper.
+
+\begin{thebibliography}{9}
+\bibitem[Waterman and Asanovi\'c(2019)]{riscv} A.~Waterman, K.~Asanovi\'c (eds.), \emph{The RISC-V Instruction Set Manual, Volume I: Unprivileged ISA}, RISC-V International.
+\bibitem[Watson et~al.(2015)]{cheri} R.~N.~M. Watson et~al., CHERI: A hybrid capability-system architecture for scalable software compartmentalization, \emph{IEEE Symposium on Security and Privacy}, 2015.
+\bibitem[Soltis(1996)]{soltis} F.~G. Soltis, \emph{Inside the AS/400}, Duke Press, 1996.
+\bibitem[Intel(2017)]{intel5} Intel Corporation, \emph{5-Level Paging and 5-Level EPT}, white paper, 2017.
+\end{thebibliography}
+\end{document}
