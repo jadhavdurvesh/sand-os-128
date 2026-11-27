@@ -102,6 +102,8 @@ _T = [
     ("cseal", 0x87, "rr", "rd = ra with the SEALED bit (perm 0x80) set: an opaque token that cannot load, store or narrow"),
     ("ccall", 0x89, "rr", "gate call: ra must be a valid sealed GATE sigil; clink = next pc, rd = the gate unsealed (data authority), pc = gate base; traps if a call is already active"),
     ("cretn", 0x8A, "none", "gate return: pc = clink, clink = 0; traps if no call is active"),
+    ("ccalx", 0x8B, "rr", "isolated gate call: like ccall, but spills v1..v128 to the kernel-set save area (csr cstack), clears every register except the arguments v1..v4, and sets rd to the callee's data capability"),
+    ("cretx", 0x8C, "none", "isolated return: restores the caller's registers from the save area except v1 and v2 (the results); traps unless the active call was made with ccalx"),
     ("cunseal", 0x88, "rr", "kernel only: rd = ra with SEALED cleared; CAPABILITY trap if ra is not a valid sealed sigil"),
 ]
 BY_NAME = {n: (c, f, s) for n, c, f, s in _T}
@@ -109,7 +111,7 @@ BY_CODE = {c: (n, f, s) for n, c, f, s in _T}
 assert len(BY_NAME) == len(BY_CODE) == len(_T)
 
 CSRS = {"priv": 0, "tvec": 1, "tpc": 2, "tcause": 3, "tval": 4, "tpriv": 5,
-        "abase": 6, "alim": 7, "cycles": 8, "scratch": 9, "timecmp": 10, "ckey": 11, "cmode": 12, "clink": 13}
+        "abase": 6, "alim": 7, "cycles": 8, "scratch": 9, "timecmp": 10, "ckey": 11, "cmode": 12, "clink": 13, "cstack": 14}
 CSR_READONLY = {0, 8}
 
 CAUSES = {1: "ILLEGAL", 2: "PRIVILEGE", 3: "DIVZERO", 4: "MISALIGN", 5: "ACCESS", 6: "SYSCALL", 7: "TIMER", 8: "CAPABILITY"}

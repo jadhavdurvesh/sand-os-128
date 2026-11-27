@@ -26,6 +26,8 @@
 .equ T_MBVAL,     80              ; one-deep 128-bit mailbox
 .equ T_CMODE,     96              ; 1 = capability mode: raw loads/stores trap, only Sigil capabilities reach memory
 .equ T_CLINK,     112             ; return link of an active gate call (CSR clink), saved per task
+.equ CSTACK_BASE,  0x21000          ; ccalx spills v1..v128 here: 2048 bytes per task, above the 64 KiB user aperture
+.equ CSTACK_STRIDE, 0x800
 .equ T_FRAME,     128             ; saved copy of the 129-quad register frame
 .equ FRAMEQ,      129
 .equ CKEY_VALUE,   0x5349474C4B45592D56455945564559A  ; boot-time Sigil key: a constant so runs stay deterministic (a real machine needs an entropy source)
@@ -474,6 +476,10 @@ sys_cwrite:
     jmp  sys_write
 syscall_return:
     lq   v17, [v0 + CURRENT]        ; install the returning task's capability mode
+    li   v19, CSTACK_STRIDE         ; per-task register save area for isolated gate calls (outside the user aperture)
+    mul  v19, v17, v19
+    addi v19, v19, CSTACK_BASE
+    csrw cstack, v19
     li   v18, TSTRIDE
     mul  v18, v17, v18
     lq   v17, [v18 + TASKS + T_CMODE]

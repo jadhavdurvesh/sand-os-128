@@ -430,6 +430,18 @@
       "summary": "gate return: pc = clink, clink = 0; traps if no call is active"
     },
     {
+      "name": "ccalx",
+      "opcode": "0x8B",
+      "format": "rr",
+      "summary": "isolated gate call: like ccall, but spills v1..v128 to the kernel-set save area (csr cstack), clears every register except the arguments v1..v4, and sets rd to the callee's data capability"
+    },
+    {
+      "name": "cretx",
+      "opcode": "0x8C",
+      "format": "none",
+      "summary": "isolated return: restores the caller's registers from the save area except v1 and v2 (the results); traps unless the active call was made with ccalx"
+    },
+    {
       "name": "cunseal",
       "opcode": "0x88",
       "format": "rr",
@@ -450,7 +462,8 @@
     "timecmp": 10,
     "ckey": 11,
     "cmode": 12,
-    "clink": 13
+    "clink": 13,
+    "cstack": 14
   },
   "causes": {
     "1": "ILLEGAL",

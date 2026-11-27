@@ -140,6 +140,8 @@ jobs:
               grep -F "exit code 0" runtime.log
               ;;
             gate)
+              python -m veylith boot examples/gateiso.s --ram "$RAM_BYTES" --max-steps "$MAX_STEPS" "${TRACE_ARGS[@]}" 2>&1 | tee runtime.log
+              grep -F "gate isolation: ok" runtime.log
               python -m veylith boot examples/gateswitch.s --ram "$RAM_BYTES" --max-steps "$MAX_STEPS" "${TRACE_ARGS[@]}" 2>&1 | tee runtime.log
               grep -F "gate switching: ok" runtime.log
               grep -F "exit code 0" runtime.log
