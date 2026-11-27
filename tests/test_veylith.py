@@ -253,4 +253,11 @@ class Sigil(unittest.TestCase):
 class Trace(unittest.TestCase):
     def test_trace_width(self):
         m=Machine(1<<16);m.trace=[];m.load(asm.assemble("li v100, 1\n halt"));m.run(10);self.assertEqual(len(m.trace[0]["raw"])-2,32)
+class Workload(unittest.TestCase):
+    def test_sorting_network_sorts_raw_and_through_capabilities(self):
+        import sys
+        sys.path.insert(0,os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),"tools"))
+        import workloads
+        a=workloads.run(workloads.build(False,3),3)[1];b=workloads.run(workloads.build(True,3),3)[1]
+        self.assertEqual(a,sorted(a));self.assertEqual(a,b);self.assertEqual(len(workloads.PAIRS),63)
 if __name__=="__main__":unittest.main()

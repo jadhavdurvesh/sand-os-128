@@ -1,0 +1,18 @@
+{
+ "elements": 16,
+ "compare_exchanges": 63,
+ "arrays_sorted": 40,
+ "glyphs_raw": 12461,
+ "glyphs_capability": 12461,
+ "glyphs_fill_only": 2007,
+ "sort_glyphs": 10454,
+ "capability_accesses": 7930,
+ "capability_access_fraction_of_sort": 0.759,
+ "sensitivity_percent_slowdown_if_each_capability_access_costs_k_extra_cycles": {
+  "0": 0.0,
+  "1": 75.9,
+  "2": 151.7,
+  "4": 303.4,
+  "8": 606.8
+ }
+}
