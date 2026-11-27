@@ -15,7 +15,11 @@ M = {
  "SortFrac": wl["capability_access_fraction_of_sort"], "SortOne": wl["sensitivity_percent_slowdown_if_each_capability_access_costs_k_extra_cycles"]["1"], "SortFour": wl["sensitivity_percent_slowdown_if_each_capability_access_costs_k_extra_cycles"]["4"],
  "KernelBytes": b["images"]["kernel_image_bytes"], "Opcodes": b["images"]["veylith_opcodes"],
 }
+nice = {"python_json_re_decimal": "Python (json, re, decimal)", "gcc_compile_veylith_vm": "gcc compiling \\texttt{veylith-vm.c}", "tar_gzip_repo": "tar and gzip of the repository", "sort_and_uniq": "sort and uniq, 200k lines", "git_log_and_diff": "git log and diff"}
+fr = json.load(open(os.path.join(root, "docs/paper/fragmentation.json")))
+FRAGROWS = "\n".join(nice[k] + " & " + f'{v["allocations"]:,}'.replace(",", "\\,") + f' & {v["internal_fragmentation_percent_by_mantissa_bits"]["0"]} & {v["internal_fragmentation_percent_by_mantissa_bits"]["2"]} & {v["internal_fragmentation_percent_by_mantissa_bits"]["6"]} & {v["buddy_peak_overhead_percent"]}\\\\' for k, v in fr.items())
 with open(os.path.join(root, "docs/paper/numbers.tex"), "w") as f:
+    f.write("\\newcommand{\\FragRows}{" + FRAGROWS.replace("\n", " ") + "}\n")
     for k, v in M.items():
         f.write(f"\\newcommand{{\\{k}}}{{{v}}}\n")
 print(open(os.path.join(root, "docs/paper/numbers.tex")).read())
