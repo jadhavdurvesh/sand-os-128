@@ -1,0 +1,180 @@
+<title>Sigil Lab</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: a small desktop. Menu bar on top, draggable windows on a dusk wallpaper, dock at the bottom.
+   Look: committed dark single theme (a desktop at night); every colour comes from the tokens below. */
+:root{
+  --bg:#0d1220; --bg2:#141b30; --win:#12182a; --bar:#1a2340; --line:#27325a; --fg:#dbe3f5; --mute:#8d9bbd;
+  --caller:#6aa3ff; --service:#f2b24c; --kernel:#8d9bbd; --ok:#5fd39a; --bad:#ff7a8a; --accent:#8f7bff;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif; --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 var(--sans);overflow:hidden;
+  background-image:radial-gradient(900px 520px at 78% 8%,#2a2f6a55,transparent 60%),radial-gradient(700px 500px at 8% 92%,#0f4a6a55,transparent 60%),linear-gradient(180deg,#0d1220,#10162b)}
+.menubar{position:fixed;top:env(safe-area-inset-top,0px);left:0;right:0;height:30px;display:flex;align-items:center;gap:18px;padding:0 max(16px,env(safe-area-inset-right,0px)) 0 max(16px,env(safe-area-inset-left,0px));
+  background:#0a0f1ecc;backdrop-filter:blur(10px);border-bottom:1px solid var(--line);font-size:12.5px;color:var(--mute);z-index:50}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);background:#0a0f1e;z-index:60}
+.menubar b{color:var(--fg);font-weight:600}.menubar .sp{flex:1}.menubar code{font-family:var(--mono);font-size:11.5px}
+.desk{position:fixed;inset:calc(30px + env(safe-area-inset-top,0px)) 0 0 0}
+.win{position:absolute;display:flex;flex-direction:column;background:var(--win);border:1px solid var(--line);border-radius:10px;box-shadow:0 18px 50px #0008;overflow:hidden;min-width:0}
+.win.hidden{display:none}
+.tb{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bar);border-bottom:1px solid var(--line);cursor:grab;user-select:none;touch-action:none}
+.tb:active{cursor:grabbing}.tb .lights{display:flex;gap:6px}.tb i{width:11px;height:11px;border-radius:50%;background:#33406e;display:block}
+.tb i.x{background:#e0607a;cursor:pointer}.tb h2{margin:0 0 0 6px;font:500 12.5px var(--sans);color:var(--fg);letter-spacing:.02em}
+.body{padding:14px;overflow:auto;flex:1;min-height:0}
+button,select{font:inherit;color:var(--fg);background:#1d2748;border:1px solid var(--line);border-radius:7px;padding:5px 11px;cursor:pointer}
+button:hover{background:#25315c}button:focus-visible,select:focus-visible,.bit:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button.on{background:var(--accent);border-color:var(--accent);color:#0d1220;font-weight:600}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.mono{font-family:var(--mono)}.mute{color:var(--mute)}
+.pill{display:inline-block;padding:2px 10px;border-radius:999px;background:#1b2547;font-size:12px;color:#cfd9f3}.pill.ok{background:#12352a;color:var(--ok)}.pill.bad{background:#3b1a25;color:var(--bad)}
+pre{margin:0;font:12.5px/1.55 var(--mono);white-space:pre-wrap;word-break:break-word}
+.term{background:#080c18;border:1px solid var(--line);border-radius:8px;padding:12px;min-height:150px;color:#b5f3cf}
+.term .p{color:var(--caller)}
+/* stepper */
+.stp{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:14px}
+.list{display:grid;gap:2px;font:12.5px var(--mono)}
+.ins{display:grid;grid-template-columns:52px 1fr;gap:8px;padding:3px 8px;border-radius:6px;border-left:3px solid transparent;color:var(--mute)}
+.ins.caller{border-color:var(--caller)}.ins.service{border-color:var(--service)}.ins.kernel{border-color:var(--kernel)}
+.ins.done{color:var(--fg)}.ins.cur{background:#212c55;color:#fff}
+.regs{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;font:12.5px var(--mono)}
+.regs .k{color:var(--mute)}.regs .v{transition:background .25s}.regs .v.ch{background:#3a3a1d}
+.dom{display:inline-block;padding:2px 10px;border-radius:999px;font-size:12px;font-weight:600;color:#0d1220}
+.dom.caller{background:var(--caller)}.dom.service{background:var(--service)}.dom.kernel{background:var(--kernel)}
+.cap{margin-top:10px;padding:10px 12px;border-radius:8px;background:#161e3a;border:1px solid var(--line);min-height:62px}
+h3{margin:0 0 6px;font:600 12px var(--sans);letter-spacing:.08em;text-transform:uppercase;color:var(--mute)}
+input[type=range]{width:100%;accent-color:var(--accent)}
+/* inspector */
+.seg{display:flex;flex-wrap:wrap;gap:10px 14px}
+.field{flex:0 0 auto}.field label{display:block;font:11px var(--sans);letter-spacing:.08em;text-transform:uppercase;color:var(--mute);margin-bottom:4px}
+.bits{display:grid;gap:2px}
+.bit{width:15px;height:20px;border:1px solid #2c3866;background:#171f3d;border-radius:3px;padding:0;font:10px var(--mono);color:var(--mute)}
+.bit.one{background:#2b3d8a;color:#fff}.bit.mac{border-color:#5b4fb5}.bit.perm{border-color:#2f8f66}.bit.exp{border-color:#9a7a2a}.bit.base{border-color:#2d5d9a}
+.bit.flip{outline:2px solid var(--bad)}
+.verdict{font:600 15px var(--sans);margin:10px 0 4px}.verdict.ok{color:var(--ok)}.verdict.bad{color:var(--bad)}
+table{border-collapse:collapse;width:100%;font-size:12.5px}td,th{padding:4px 8px;border-bottom:1px solid var(--line);text-align:left}
+/* cost */
+.bar2{display:grid;grid-template-columns:minmax(120px,210px) 1fr 60px;gap:10px;align-items:center;margin:8px 0}
+.bar2 .t{height:16px;background:#1b2547;border-radius:4px;overflow:hidden}.bar2 .t div{height:100%;background:var(--caller);border-radius:4px;min-width:3px}
+.bar2.k .t div{background:var(--service)}.bar2 span.n{text-align:right;font-family:var(--mono)}
+.dock{position:fixed;left:50%;transform:translateX(-50%);bottom:max(10px,env(safe-area-inset-bottom,0px));display:flex;gap:8px;padding:8px 10px;background:#0a0f1ecc;backdrop-filter:blur(12px);border:1px solid var(--line);border-radius:16px;z-index:40}
+.dock button{display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 12px;border-radius:10px;font-size:11.5px;min-width:74px}
+.dock svg{width:22px;height:22px;stroke:var(--fg);fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.dock button.open{border-color:var(--accent)}
+@media (max-width:760px){
+  .win{position:relative!important;left:auto!important;top:auto!important;width:auto!important;height:auto!important;margin:8px 0}
+  .desk{overflow-y:auto;padding:8px max(16px,env(safe-area-inset-right,0px)) 96px max(16px,env(safe-area-inset-left,0px))}
+  .stp{grid-template-columns:minmax(0,1fr)}.tb{cursor:default}
+  .menubar .hide-m{display:none}
+}
+@media (prefers-reduced-motion:reduce){.regs .v{transition:none}}
+</style>
+
+<div class="menubar"><b>Sigil Lab</b><span class="hide-m">Veylith 128-Native</span><span class="sp"></span><span class="hide-m mono" id="meta"></span></div>
+<div class="desk" id="desk"></div>
+<nav class="dock" id="dock" aria-label="Apps"></nav>
+
+<script>
+const DATA=/*DATA*/null;
+const $=(s,e=document)=>e.querySelector(s), el=(t,c,h)=>{const n=document.createElement(t);if(c)n.className=c;if(h!=null)n.innerHTML=h;return n};
+const esc=s=>String(s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+$("#meta").textContent=`${DATA.unit_tests} tests · ${DATA.fuzz.programs} fuzz programs · ${DATA.fuzz.divergences} divergences`;
+/* ---------- window manager ---------- */
+const wins={};let z=10;
+function mkWin(id,title,x,y,w,h,icon,build){
+  const win=el("section","win");win.style.cssText=`left:${x}px;top:${y}px;width:${w}px;height:${h}px;z-index:${++z}`;
+  const tb=el("div","tb",`<span class="lights"><i class="x" title="Close"></i><i></i><i></i></span><h2>${title}</h2>`);
+  const body=el("div","body");win.append(tb,body);$("#desk").append(win);build(body);
+  win.addEventListener("pointerdown",()=>win.style.zIndex=++z);
+  let sx,sy,ox,oy,drag=false;
+  tb.addEventListener("pointerdown",e=>{if(matchMedia("(max-width:760px)").matches||e.target.classList.contains("x"))return;drag=true;sx=e.clientX;sy=e.clientY;ox=win.offsetLeft;oy=win.offsetTop;tb.setPointerCapture(e.pointerId)});
+  tb.addEventListener("pointermove",e=>{if(!drag)return;win.style.left=Math.max(-w+80,ox+e.clientX-sx)+"px";win.style.top=Math.max(0,oy+e.clientY-sy)+"px"});
+  tb.addEventListener("pointerup",()=>drag=false);
+  $(".x",tb).onclick=()=>{win.classList.add("hidden");dockSync()};
+  const b=el("button","",`<svg viewBox="0 0 24 24">${icon}</svg>${title.split(" ")[0]}`);b.onclick=()=>{win.classList.toggle("hidden");if(!win.classList.contains("hidden"))win.style.zIndex=++z;dockSync()};
+  $("#dock").append(b);wins[id]={win,b};
+}
+function dockSync(){for(const k in wins)wins[k].b.classList.toggle("open",!wins[k].win.classList.contains("hidden"))}
+/* ---------- SipHash-2-4 in JS (BigInt); same construction as the machines ---------- */
+const M64=(1n<<64n)-1n,rotl=(x,b)=>((x<<b)|(x>>(64n-b)))&M64;
+function sip(key,bytes){let k0=key&M64,k1=(key>>64n)&M64;let v0=k0^0x736f6d6570736575n,v1=k1^0x646f72616e646f6dn,v2=k0^0x6c7967656e657261n,v3=k1^0x7465646279746573n;
+  const rnd=()=>{v0=(v0+v1)&M64;v1=rotl(v1,13n);v1^=v0;v0=rotl(v0,32n);v2=(v2+v3)&M64;v3=rotl(v3,16n);v3^=v2;v0=(v0+v3)&M64;v3=rotl(v3,21n);v3^=v0;v2=(v2+v1)&M64;v1=rotl(v1,17n);v1^=v2;v2=rotl(v2,32n)};
+  const n=bytes.length,full=n-n%8;for(let i=0;i<full;i+=8){let m=0n;for(let j=7;j>=0;j--)m=(m<<8n)|BigInt(bytes[i+j]);v3^=m;rnd();rnd();v0^=m}
+  let m=BigInt(n)<<56n;for(let j=n-1;j>=full;j--)m|=BigInt(bytes[j])<<BigInt(8*(j-full));v3^=m;rnd();rnd();v0^=m;v2^=0xffn;rnd();rnd();rnd();rnd();return (v0^v1^v2^v3)&M64}
+const bodyBytes=b=>{const a=[];for(let i=0;i<11;i++)a.push(Number((b>>BigInt(8*i))&255n));return a};
+const mac=(key,body)=>sip(key,bodyBytes(body))>>24n;
+function parse(key,cap){const body=cap&((1n<<88n)-1n);if((cap>>88n)!==mac(key,body))return null;const perms=Number((cap>>80n)&255n),exp=Number((cap>>72n)&255n),base=cap&((1n<<72n)-1n);
+  if(perms&~0x8f||exp>72||(base&((1n<<BigInt(exp))-1n)))return null;return{perms,exp,base}}
+/* ---------- Terminal ---------- */
+mkWin("term","Terminal",24,20,560,420,'<path d="M4 6l5 5-5 5M12 18h8"/>',b=>{
+  const names={gate:"gate",gateiso:"gateiso",gateswitch:"gateswitch",sigil:"sigil",sigilforge:"sigilforge",sigilraw:"sigilraw"};
+  const tabs=el("div","row");const out=el("pre","term");const meta=el("div","row");meta.style.marginTop="10px";const src=el("pre","term");src.style.cssText="margin-top:10px;max-height:190px;overflow:auto;color:#c8d3ee;display:none";
+  const tg=el("button","","Show source");let cur="gate",timer=null;
+  function show(n){cur=n;[...tabs.children].forEach(c=>c.classList.toggle("on",c.dataset.n===n));const e=DATA.examples[n];clearInterval(timer);
+    const full=`$ python3 -m veylith boot examples/${n}.s\n${e.console}`;out.innerHTML="";let i=0;
+    timer=setInterval(()=>{i+=6;const t=full.slice(0,i);out.innerHTML=esc(t).replace(/^\$ .*/,m=>`<span class="p">${m}</span>`);if(i>=full.length)clearInterval(timer)},16);
+    meta.innerHTML=`<span class="pill">${e.glyphs} Glyphs retired</span><span class="pill ${e.exit===0?"ok":"bad"}">exit ${e.exit}${e.exit===136?" (CAPABILITY fault, expected)":""}</span><span class="pill ${e.c_machine_identical?"ok":"bad"}">C machine ${e.c_machine_identical?"identical":"DIFFERS"}</span>`;
+    src.textContent=e.source}
+  Object.keys(names).forEach(n=>{const t=el("button","",n);t.dataset.n=n;t.onclick=()=>show(n);tabs.append(t)});
+  tg.onclick=()=>{const s=src.style.display==="none";src.style.display=s?"block":"none";tg.textContent=s?"Hide source":"Show source"};
+  const note=el("p","mute","Output captured from real runs of Kernelloom on the Python reference machine, checked against the compiled C machine.");note.style.fontSize="12px";
+  b.append(tabs,el("div"),note,out,meta,tg,src);show("gate")});
+/* ---------- Gate stepper ---------- */
+mkWin("step","Gate Stepper",610,20,640,520,'<path d="M5 12h6l2-5 2 10 2-5h2"/>',b=>{
+  let mode="isolated",i=0,play=null;
+  const top=el("div","row"),stp=el("div","stp"),list=el("div","list"),right=el("div"),slider=el("input");slider.type="range";slider.style.marginTop="10px";
+  const bi=el("button","on","Isolated  ccalx / cretx"),bs=el("button","","Shared  ccall / cretn"),bp=el("button","","Play"),bn=el("button","","Step →"),br=el("button","","Reset");
+  top.append(bi,bs,bp,bn,br);stp.append(list,right);b.append(top,el("div"),slider,stp);
+  const sc=()=>DATA.scenarios[mode].steps;
+  const notes=a=>{let m;
+    if(/^(ccall|ccalx)/.test(a))return a.startsWith("ccalx")?"Hardware checks the gate's MAC, saves the caller's registers to a save area outside the user aperture, clears all but the arguments (v1..v4), hands the service its own data capability in v6 and jumps to the gate's single entry point.":"Hardware checks the gate's MAC, records the return address and jumps to the gate's single entry point. Registers are NOT cleared or saved.";
+    if(/^cretx/.test(a))return "Hardware restores the caller's registers from the save area. Only v1 and v2 carry results back, so everything the service did to v10 is discarded.";
+    if(/^cretn/.test(a))return "Control returns to the caller. Registers are whatever the service left in them.";
+    if(m=a.match(/^mv v13, v10/))return "The service probes the caller's v10. This is the test: does it see the caller's secret?";
+    if(/^li v10, 0xbad/.test(a))return "The service overwrites v10 with junk. Does the caller see that after the return?";
+    if(/^sys/.test(a))return "Caller leaves via a system call so the kernel can end the demo. No kernel was involved in the gate call.";
+    return "Executes in the "+"current domain."};
+  function draw(){const s=sc();slider.max=s.length-1;slider.value=i;list.innerHTML="";
+    s.forEach((x,k)=>{const r=el("div","ins "+x.domain+(k<i?" done":"")+(k===i?" cur":""),`<span>${x.pc.toString(16).padStart(4,"0")}</span><span>${esc(x.asm)}</span>`);r.onclick=()=>{i=k;draw()};list.append(r)});
+    const c=s[i],p=i?s[i-1]:null;right.innerHTML="";
+    right.append(el("h3","","Domain"),el("div","",`<span class="dom ${c.domain}">${c.domain}</span>`));
+    const link=c.clink==="0"?"none":(c.clink.length>20?"iso · ":"")+"0x"+BigInt(c.clink).toString(16).slice(-4);
+    right.append(el("h3","","Return link (clink)"),el("div","mono",link));
+    right.append(el("h3","","Registers (before this step)"));
+    const g=el("div","regs");for(const k of Object.keys(c.regs)){const ch=p&&p.regs[k]!==c.regs[k];g.append(el("span","k",k),el("span","v"+(ch?" ch":""),c.regs[k]))}right.append(g);
+    const cap=el("div","cap");const n=c.domain==="kernel"?"Demo finished.":notes(c.asm);
+    let extra="";const fin=s[s.length-1];if(i===s.length-1)extra=`<br><b>Result:</b> the caller's v10 is <span class="mono">${fin.regs.v10}</span> (it set 0x77). The service saw <span class="mono">${fin.regs.v13}</span> in v10.`;
+    cap.innerHTML=`<h3>What is happening</h3>${esc(n)}${extra}`;right.append(cap)}
+  const stop=()=>{clearInterval(play);play=null;bp.textContent="Play"};
+  bp.onclick=()=>{if(play)return stop();if(i>=sc().length-1)i=0;bp.textContent="Pause";play=setInterval(()=>{if(i>=sc().length-1)return stop();i++;draw()},800);draw()};
+  bn.onclick=()=>{stop();i=Math.min(i+1,sc().length-1);draw()};br.onclick=()=>{stop();i=0;draw()};slider.oninput=()=>{stop();i=+slider.value;draw()};
+  const setm=m=>{stop();mode=m;i=0;bi.classList.toggle("on",m==="isolated");bs.classList.toggle("on",m==="shared");draw()};bi.onclick=()=>setm("isolated");bs.onclick=()=>setm("shared");draw()});
+/* ---------- Capability inspector ---------- */
+mkWin("cap","Capability Inspector",60,300,600,470,'<rect x="5" y="10" width="14" height="9" rx="2"/><path d="M8 10V7a4 4 0 018 0v3"/>',b=>{
+  const key=BigInt(DATA.inspector.key);let cap=BigInt(DATA.inspector.cap),flipped=new Set();const orig=cap;
+  const info=el("p","mute","One Sigil is one 128-bit value. Click any bit to flip it; the MAC is recomputed in your browser with SipHash-2-4 and the key below.");info.style.cssText="margin:0 0 10px;font-size:12.5px";
+  const grid=el("div","seg"),verdict=el("div","verdict"),tbl=el("div"),rst=el("button","","Reset");
+  const parts=[["MAC 40",88,40,"mac"],["perms 8",80,8,"perm"],["exp 8",72,8,"exp"],["base 72",0,72,"base"]];
+  function draw(){grid.innerHTML="";for(const [lab,lo,n,cls] of parts){const f=el("div","field");f.append(el("label","",lab));const bits=el("div","bits");bits.style.gridTemplateColumns=`repeat(${Math.min(n,n>40?24:20)},15px)`;
+      for(let k=n-1;k>=0;k--){const pos=lo+k,one=(cap>>BigInt(pos))&1n;const bt=el("button","bit "+cls+(one?" one":"")+(flipped.has(pos)?" flip":""),one?"1":"0");bt.title="bit "+pos;bt.onclick=()=>{cap^=1n<<BigInt(pos);flipped.has(pos)?flipped.delete(pos):flipped.add(pos);draw()};bits.append(bt)}f.append(bits);grid.append(f)}
+    const body=cap&((1n<<88n)-1n),want=mac(key,body),have=cap>>88n,p=parse(key,cap);
+    verdict.className="verdict "+(p?"ok":"bad");verdict.textContent=p?"Valid capability":"Rejected: hardware would raise CAPABILITY (cause 8)";
+    const hx=v=>"0x"+v.toString(16);
+    tbl.innerHTML=`<table><tr><th>MAC in the value</th><td class="mono">${hx(have)}</td></tr><tr><th>MAC the hardware computes</th><td class="mono">${hx(want)}</td></tr>`+
+      (p?`<tr><th>Region</th><td class="mono">${hx(p.base)} … +2^${p.exp} (${2**p.exp} bytes)</td></tr><tr><th>Permissions</th><td>${[p.perms&1&&"READ",p.perms&2&&"WRITE",p.perms&4&&"NARROW",p.perms&8&&"GATE",p.perms&0x80&&"SEALED"].filter(Boolean).join(" · ")||"none"}</td></tr>`:"")+
+      `<tr><th>Key (kernel only)</th><td class="mono">${DATA.inspector.key}</td></tr></table>`}
+  rst.onclick=()=>{cap=orig;flipped=new Set();draw()};
+  const foot=el("p","mute",`In the emulator test, all 128 single-bit flips of this capability were rejected (${128-DATA.inspector.tampered_bits_accepted} of 128). A random 128-bit value passes with probability 2<sup>-40</sup>.`);foot.style.fontSize="12px";
+  const rr=el("div","row");rr.append(rst);b.append(info,grid,verdict,tbl,rr,foot);draw()});
+/* ---------- Cost ---------- */
+mkWin("cost","Call Cost",690,340,540,360,'<path d="M5 19V9M12 19V5M19 19v-7"/>',b=>{
+  const g=DATA.bench;const rows=[["Gate call + return, empty service",g.glyphs_per_gate_call_empty_service,""],["Gate call + return, counter service",g.glyphs_per_gate_call_counter_service,""],
+   ["Isolated gate call, counter service",g.glyphs_per_isolated_gate_call_counter_service,""],["Null system call",g.glyphs_per_null_syscall_round_trip,"k"],["Context switch (yield)",g.glyphs_per_yield_context_switch,"k"]];
+  const mx=Math.max(...rows.map(r=>r[1]));b.append(el("h3","","Retired Glyphs per cross-domain call"));
+  rows.forEach(([l,v,c])=>b.append(el("div","bar2 "+c,`<span>${l}</span><div class="t"><div style="width:${100*v/mx}%"></div></div><span class="n">${v}</span>`)));
+  const n=el("p","mute",`Counted in retired Glyphs on an emulator, not time on hardware. The isolated call spills and restores ${g.isolated_call_register_quads_spilled_and_restored} register words to memory, which Glyph counting does not show; a kernel context switch copies a similar amount. MAC latency is not modelled.`);n.style.fontSize="12px";b.append(n)});
+dockSync();
+</script>

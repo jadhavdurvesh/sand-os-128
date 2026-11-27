@@ -294,8 +294,29 @@ class Machine:
             self._write(rd, sigil_make(self.csr[11], p[0], p[1] & ~(SIGIL_SEALED | SIGIL_GATE), p[2]))
             self.csr[13] = nxt
             newpc = p[0]
+        elif name == "ccalx":
+            p = sigil_parse(self.csr[11], a)
+            cs = self.csr[14]
+            if p is None or p[1] & (SIGIL_SEALED | SIGIL_GATE) != (SIGIL_SEALED | SIGIL_GATE) or p[2] < 4 or self.csr[13] \
+                    or cs == 0 or cs & 15 or cs + 2048 > len(self.ram):
+                raise Trap(CAUSE_CAPABILITY, a)
+            data = sigil_make(self.csr[11], p[0], p[1] & ~(SIGIL_SEALED | SIGIL_GATE), p[2])
+            for i in range(1, 129):
+                self.ram[cs + 16 * (i - 1):cs + 16 * i] = self.v[i].to_bytes(16, "little")
+                if i > 4:
+                    self.v[i] = 0
+            self._write(rd, data)
+            self.csr[13] = nxt | (1 << 127)
+            newpc = p[0]
+        elif name == "cretx":
+            cs = self.csr[14]
+            if not self.csr[13] >> 127:
+                raise Trap(CAUSE_CAPABILITY, 0)
+            for i in range(3, 129):                 # v1 and v2 carry the results back; everything else is the caller's again
+                self.v[i] = int.from_bytes(self.ram[cs + 16 * (i - 1):cs + 16 * i], "little")
+            newpc, self.csr[13] = self.csr[13] & ((1 << 127) - 1), 0
         elif name == "cretn":
-            if not self.csr[13]:
+            if not self.csr[13] or self.csr[13] >> 127:
                 raise Trap(CAUSE_CAPABILITY, 0)
             newpc, self.csr[13] = self.csr[13], 0
         elif name == "cunseal":

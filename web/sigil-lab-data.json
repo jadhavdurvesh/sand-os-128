@@ -1,0 +1,502 @@
+{
+ "scenarios": {
+  "isolated": {
+   "title": "Isolated gate call (ccalx / cretx)",
+   "steps": [
+    {
+     "pc": 16384,
+     "asm": "li v9, 0x99",
+     "domain": "caller",
+     "priv": 1,
+     "clink": "0",
+     "regs": {
+      "v1": "0x6000",
+      "v2": "0x4800",
+      "v6": "0x0",
+      "v9": "0x0",
+      "v10": "0x0",
+      "v13": "0x0",
+      "v14": "0x0"
+     }
+    },
+    {
+     "pc": 16400,
+     "asm": "li v10, 0x77",
+     "domain": "caller",
+     "priv": 1,
+     "clink": "0",
+     "regs": {
+      "v1": "0x6000",
+      "v2": "0x4800",
+      "v6": "0x0",
+      "v9": "0x99",
+      "v10": "0x0",
+      "v13": "0x0",
+      "v14": "0x0"
+     }
+    },
+    {
+     "pc": 16416,
+     "asm": "li v1, 0x3",
+     "domain": "caller",
+     "priv": 1,
+     "clink": "0",
+     "regs": {
+      "v1": "0x6000",
+      "v2": "0x4800",
+      "v6": "0x0",
+      "v9": "0x99",
+      "v10": "0x77",
+      "v13": "0x0",
+      "v14": "0x0"
+     }
+    },
+    {
+     "pc": 16432,
+     "asm": "li v2, 0x4",
+     "domain": "caller",
+     "priv": 1,
+     "clink": "0",
+     "regs": {
+      "v1": "0x3",
+      "v2": "0x4800",
+      "v6": "0x0",
+      "v9": "0x99",
+      "v10": "0x77",
+      "v13": "0x0",
+      "v14": "0x0"
+     }
+    },
+    {
+     "pc": 16448,
+     "asm": "ccalx v6, v5",
+     "domain": "caller",
+     "priv": 1,
+     "clink": "0",
+     "regs": {
+      "v1": "0x3",
+      "v2": "0x4",
+      "v6": "0x0",
+      "v9": "0x99",
+      "v10": "0x77",
+      "v13": "0x0",
+      "v14": "0x0"
+     }
+    },
+    {
+     "pc": 18432,
+     "asm": "mv v13, v10",
+     "domain": "service",
+     "priv": 1,
+     "clink": "0x80000000000000000000000000004050",
+     "regs": {
+      "v1": "0x3",
+      "v2": "0x4",
+      "v6": "0xd19e8712920708000000000000004800",
+      "v9": "0x0",
+      "v10": "0x0",
+      "v13": "0x0",
+      "v14": "0x0"
+     }
+    },
+    {
+     "pc": 18448,
+     "asm": "mv v14, v9",
+     "domain": "service",
+     "priv": 1,
+     "clink": "0x80000000000000000000000000004050",
+     "regs": {
+      "v1": "0x3",
+      "v2": "0x4",
+      "v6": "0xd19e8712920708000000000000004800",
+      "v9": "0x0",
+      "v10": "0x0",
+      "v13": "0x0",
+      "v14": "0x0"
+     }
+    },
+    {
+     "pc": 18464,
+     "asm": "add v1, v1, v2",
+     "domain": "service",
+     "priv": 1,
+     "clink": "0x80000000000000000000000000004050",
+     "regs": {
+      "v1": "0x3",
+      "v2": "0x4",
+      "v6": "0xd19e8712920708000000000000004800",
+      "v9": "0x0",
+      "v10": "0x0",
+      "v13": "0x0",
+      "v14": "0x0"
+     }
+    },
+    {
+     "pc": 18480,
+     "asm": "li v10, 0xbad",
+     "domain": "service",
+     "priv": 1,
+     "clink": "0x80000000000000000000000000004050",
+     "regs": {
+      "v1": "0x7",
+      "v2": "0x4",
+      "v6": "0xd19e8712920708000000000000004800",
+      "v9": "0x0",
+      "v10": "0x0",
+      "v13": "0x0",
+      "v14": "0x0"
+     }
+    },
+    {
+     "pc": 18496,
+     "asm": "cretx",
+     "domain": "service",
+     "priv": 1,
+     "clink": "0x80000000000000000000000000004050",
+     "regs": {
+      "v1": "0x7",
+      "v2": "0x4",
+      "v6": "0xd19e8712920708000000000000004800",
+      "v9": "0x0",
+      "v10": "0xbad",
+      "v13": "0x0",
+      "v14": "0x0"
+     }
+    },
+    {
+     "pc": 16464,
+     "asm": "mv v11, v1",
+     "domain": "caller",
+     "priv": 1,
+     "clink": "0",
+     "regs": {
+      "v1": "0x7",
+      "v2": "0x4",
+      "v6": "0x0",
+      "v9": "0x99",
+      "v10": "0x77",
+      "v13": "0x0",
+      "v14": "0x0"
+     }
+    },
+    {
+     "pc": 16480,
+     "asm": "sys 1",
+     "domain": "caller",
+     "priv": 1,
+     "clink": "0",
+     "regs": {
+      "v1": "0x7",
+      "v2": "0x4",
+      "v6": "0x0",
+      "v9": "0x99",
+      "v10": "0x77",
+      "v13": "0x0",
+      "v14": "0x0"
+     }
+    },
+    {
+     "pc": 18528,
+     "asm": "(trap: SYSCALL, back in the kernel)",
+     "domain": "kernel",
+     "priv": 0,
+     "clink": "0",
+     "regs": {
+      "v1": "0x7",
+      "v2": "0x4",
+      "v6": "0x0",
+      "v9": "0x99",
+      "v10": "0x77",
+      "v13": "0x0",
+      "v14": "0x0"
+     }
+    }
+   ]
+  },
+  "shared": {
+   "title": "Shared-register gate call (ccall / cretn)",
+   "steps": [
+    {
+     "pc": 16384,
+     "asm": "li v9, 0x99",
+     "domain": "caller",
+     "priv": 1,
+     "clink": "0",
+     "regs": {
+      "v1": "0x6000",
+      "v2": "0x4800",
+      "v6": "0x0",
+      "v9": "0x0",
+      "v10": "0x0",
+      "v13": "0x0",
+      "v14": "0x0"
+     }
+    },
+    {
+     "pc": 16400,
+     "asm": "li v10, 0x77",
+     "domain": "caller",
+     "priv": 1,
+     "clink": "0",
+     "regs": {
+      "v1": "0x6000",
+      "v2": "0x4800",
+      "v6": "0x0",
+      "v9": "0x99",
+      "v10": "0x0",
+      "v13": "0x0",
+      "v14": "0x0"
+     }
+    },
+    {
+     "pc": 16416,
+     "asm": "li v1, 0x3",
+     "domain": "caller",
+     "priv": 1,
+     "clink": "0",
+     "regs": {
+      "v1": "0x6000",
+      "v2": "0x4800",
+      "v6": "0x0",
+      "v9": "0x99",
+      "v10": "0x77",
+      "v13": "0x0",
+      "v14": "0x0"
+     }
+    },
+    {
+     "pc": 16432,
+     "asm": "li v2, 0x4",
+     "domain": "caller",
+     "priv": 1,
+     "clink": "0",
+     "regs": {
+      "v1": "0x3",
+      "v2": "0x4800",
+      "v6": "0x0",
+      "v9": "0x99",
+      "v10": "0x77",
+      "v13": "0x0",
+      "v14": "0x0"
+     }
+    },
+    {
+     "pc": 16448,
+     "asm": "ccall v6, v5",
+     "domain": "caller",
+     "priv": 1,
+     "clink": "0",
+     "regs": {
+      "v1": "0x3",
+      "v2": "0x4",
+      "v6": "0x0",
+      "v9": "0x99",
+      "v10": "0x77",
+      "v13": "0x0",
+      "v14": "0x0"
+     }
+    },
+    {
+     "pc": 18432,
+     "asm": "mv v13, v10",
+     "domain": "service",
+     "priv": 1,
+     "clink": "0x4050",
+     "regs": {
+      "v1": "0x3",
+      "v2": "0x4",
+      "v6": "0xd19e8712920708000000000000004800",
+      "v9": "0x99",
+      "v10": "0x77",
+      "v13": "0x0",
+      "v14": "0x0"
+     }
+    },
+    {
+     "pc": 18448,
+     "asm": "mv v14, v9",
+     "domain": "service",
+     "priv": 1,
+     "clink": "0x4050",
+     "regs": {
+      "v1": "0x3",
+      "v2": "0x4",
+      "v6": "0xd19e8712920708000000000000004800",
+      "v9": "0x99",
+      "v10": "0x77",
+      "v13": "0x77",
+      "v14": "0x0"
+     }
+    },
+    {
+     "pc": 18464,
+     "asm": "add v1, v1, v2",
+     "domain": "service",
+     "priv": 1,
+     "clink": "0x4050",
+     "regs": {
+      "v1": "0x3",
+      "v2": "0x4",
+      "v6": "0xd19e8712920708000000000000004800",
+      "v9": "0x99",
+      "v10": "0x77",
+      "v13": "0x77",
+      "v14": "0x99"
+     }
+    },
+    {
+     "pc": 18480,
+     "asm": "li v10, 0xbad",
+     "domain": "service",
+     "priv": 1,
+     "clink": "0x4050",
+     "regs": {
+      "v1": "0x7",
+      "v2": "0x4",
+      "v6": "0xd19e8712920708000000000000004800",
+      "v9": "0x99",
+      "v10": "0x77",
+      "v13": "0x77",
+      "v14": "0x99"
+     }
+    },
+    {
+     "pc": 18496,
+     "asm": "cretn",
+     "domain": "service",
+     "priv": 1,
+     "clink": "0x4050",
+     "regs": {
+      "v1": "0x7",
+      "v2": "0x4",
+      "v6": "0xd19e8712920708000000000000004800",
+      "v9": "0x99",
+      "v10": "0xbad",
+      "v13": "0x77",
+      "v14": "0x99"
+     }
+    },
+    {
+     "pc": 16464,
+     "asm": "mv v11, v1",
+     "domain": "caller",
+     "priv": 1,
+     "clink": "0",
+     "regs": {
+      "v1": "0x7",
+      "v2": "0x4",
+      "v6": "0xd19e8712920708000000000000004800",
+      "v9": "0x99",
+      "v10": "0xbad",
+      "v13": "0x77",
+      "v14": "0x99"
+     }
+    },
+    {
+     "pc": 16480,
+     "asm": "sys 1",
+     "domain": "caller",
+     "priv": 1,
+     "clink": "0",
+     "regs": {
+      "v1": "0x7",
+      "v2": "0x4",
+      "v6": "0xd19e8712920708000000000000004800",
+      "v9": "0x99",
+      "v10": "0xbad",
+      "v13": "0x77",
+      "v14": "0x99"
+     }
+    },
+    {
+     "pc": 18528,
+     "asm": "(trap: SYSCALL, back in the kernel)",
+     "domain": "kernel",
+     "priv": 0,
+     "clink": "0",
+     "regs": {
+      "v1": "0x7",
+      "v2": "0x4",
+      "v6": "0xd19e8712920708000000000000004800",
+      "v9": "0x99",
+      "v10": "0xbad",
+      "v13": "0x77",
+      "v14": "0x99"
+     }
+    }
+   ]
+  }
+ },
+ "examples": {
+  "gate": {
+   "console": "[kernelloom] Veylith 128-Native v1 booting user program\ngate: ok\n[kernelloom] user exit 0",
+   "glyphs": 1964,
+   "exit": 0,
+   "c_machine_identical": true,
+   "source": "; Sigil call gate: a protected counter service reached by a 2-Glyph call, with no kernel involvement per call.\n; The service owns a 256-byte region: its code is at the region base (the ONLY entry point a gate allows) and its counter\n; lives inside the region. The client seals the region capability into a gate, enters capability mode, and can then reach the\n; service only through ccall: it cannot read or write the counter, and cannot jump anywhere else in the service.\n.equ USER_BASE, 0x10000\n.org USER_BASE\n_start:\n    li   sp, 0x1F000\n    la   v2, svc\n    li   v3, 8                   ; 2^8 = 256 bytes, naturally aligned (see .align below)\n    li   v4, 7 | 8               ; READ | WRITE | NARROW | GATE\n    li   v1, 10\n    sys  0                       ; capget\n    cseal v30, v1                ; the gate: an opaque token; its base is the one entry point\n    li   v1, 11\n    sys  0                       ; capability mode: raw loads and stores now trap\n    ccall v20, v30               ; v1 = 1\n    mv   v10, v1\n    ccall v20, v30               ; v1 = 2\n    mv   v11, v1\n    ccall v20, v30               ; v1 = 3\n    mv   v12, v1\n    li   v6, 1\n    bne  v10, v6, bad\n    li   v6, 2\n    bne  v11, v6, bad\n    li   v6, 3\n    bne  v12, v6, bad\n    la   v2, msg_ok\n    li   v3, 9\n    li   v1, 1\n    sys  0\n    li   v2, 0\n    li   v1, 2\n    sys  0\nbad:\n    la   v2, msg_bad\n    li   v3, 4\n    li   v1, 1\n    sys  0\n    li   v2, 1\n    li   v1, 2\n    sys  0\nmsg_ok:  .ascii \"gate: ok\\n\"\nmsg_bad: .ascii \"BAD\\n\"\n.align 256\nsvc:                             ; entry: v20 = the service's own data authority, delivered by ccall\n    clq  v6, [v20 + 128]\n    addi v6, v6, 1\n    csq  [v20 + 128], v6\n    mv   v1, v6\n    cretn\n.space 160\n"
+  },
+  "gateswitch": {
+   "console": "[kernelloom] Veylith 128-Native v1 booting user program\ngate switching: ok\n[kernelloom] user exit 0",
+   "glyphs": 6815,
+   "exit": 0,
+   "c_machine_identical": true,
+   "source": "; Gate calls survive context switches: the gate's return link is saved per task. Both tasks enter the same service, and the\n; service yields to the other task in the MIDDLE of the call. Each task must still return to its own caller.\n.equ USER_BASE, 0x10000\n.org USER_BASE\n_start:\n    li   sp, 0x1F000\n    la   v2, svc\n    li   v3, 8\n    li   v4, 7 | 8\n    li   v1, 10\n    sys  0                       ; capget\n    cseal v30, v1\n    li   v1, 11\n    sys  0                       ; capability mode, inherited by the worker\n    la   v2, worker\n    li   v3, 0x1E000\n    mv   v4, v30                 ; the gate token is the worker's argument\n    li   v1, 6\n    sys  0\n    mv   v24, v1\n    ccall v20, v30               ; yields inside the service, comes back here\n    mv   v10, v1\n    li   v1, 9                   ; recv the worker's result\n    sys  0\n    mv   v11, v1\n    add  v12, v10, v11\n    li   v6, 3\n    bne  v12, v6, bad            ; the two results are 1 and 2 in some order\n    beq  v10, v11, bad\n    mv   v2, v24\n    li   v1, 7\n    sys  0                       ; join\n    la   v2, msg_ok\n    li   v3, 19\n    li   v1, 1\n    sys  0\n    li   v2, 0\n    li   v1, 2\n    sys  0\nbad:\n    la   v2, msg_bad\n    li   v3, 4\n    li   v1, 1\n    sys  0\n    li   v2, 1\n    li   v1, 2\n    sys  0\nworker:\n    mv   v30, v1\n    ccall v20, v30\n    mv   v3, v1\n    li   v2, 1\n    li   v1, 8                   ; send the result to task 1; retry if its mailbox is full\nretry:\n    li   v1, 8\n    sys  0\n    li   v6, -2\n    beq  v1, v6, again\n    li   v2, 0\n    li   v1, 2\n    sys  0\nagain:\n    li   v1, 5\n    sys  0\n    li   v2, 1\n    jmp  retry\nmsg_ok:  .ascii \"gate switching: ok\\n\"\nmsg_bad: .ascii \"BAD\\n\"\n.align 256\nsvc:\n    clq  v6, [v20 + 128]\n    addi v6, v6, 1\n    csq  [v20 + 128], v6\n    li   v1, 5                   ; yield in the middle of the call\n    sys  0\n    mv   v1, v6\n    cretn\n.space 144\n"
+  },
+  "gateiso": {
+   "console": "[kernelloom] Veylith 128-Native v1 booting user program\ngate isolation: ok\n[kernelloom] user exit 0",
+   "glyphs": 2033,
+   "exit": 0,
+   "c_machine_identical": true,
+   "source": "; Isolated gate call (ccalx / cretx): the callee sees none of the caller's registers and cannot corrupt them.\n; The caller fills several registers (including sp) with secrets, calls the service with two arguments (v1, v2), and checks that\n;   - the service saw zero in every non-argument register it probed (it reports what it saw),\n;   - the service's own clobbering of those registers is invisible after the return,\n;   - the arguments arrived and the result came back in v1.\n.equ USER_BASE, 0x10000\n.org USER_BASE\n_start:\n    li   sp, 0x1F000\n    la   v2, svc\n    li   v3, 8\n    li   v4, 15                  ; READ | WRITE | NARROW | GATE\n    li   v1, 10\n    sys  0                       ; capget\n    cseal v30, v1\n    li   v1, 11\n    sys  0                       ; capability mode\n    li   v10, 0x1111\n    li   v11, 0x2222\n    li   v50, 0x5050\n    li   v100, 0x100100\n    li   v1, 7                   ; argument 1\n    li   v2, 5                   ; argument 2\n    ccalx v20, v30\n    li   v6, 12\n    bne  v1, v6, bad             ; 7 + 5, and nothing the service saw was non-zero\n    li   v6, 0\n    bne  v2, v6, bad             ; v2 carries the service's second result: the count of secrets it saw (must be 0)\n    li   v6, 0x1111\n    bne  v10, v6, bad\n    li   v6, 0x2222\n    bne  v11, v6, bad\n    li   v6, 0x5050\n    bne  v50, v6, bad\n    li   v6, 0x100100\n    bne  v100, v6, bad\n    li   v6, 0x1F000\n    bne  sp, v6, bad             ; sp came back untouched even though the service trashed it\n    la   v2, msg_ok\n    li   v3, 19\n    li   v1, 1\n    sys  0\n    li   v2, 0\n    li   v1, 2\n    sys  0\nbad:\n    la   v2, msg_bad\n    li   v3, 4\n    li   v1, 1\n    sys  0\n    li   v2, 1\n    li   v1, 2\n    sys  0\nmsg_ok:  .ascii \"gate isolation: ok\\n\"\nmsg_bad: .ascii \"BAD\\n\"\n.align 256\nsvc:                             ; v1, v2 = arguments; v20 = data capability; everything else is zero\n    add  v8, v1, v2              ; the real work\n    li   v9, 0                   ; count the caller secrets that leaked in\n    beq  v10, v0, s1\n    addi v9, v9, 1\ns1: beq  v11, v0, s2\n    addi v9, v9, 1\ns2: beq  v50, v0, s3\n    addi v9, v9, 1\ns3: beq  v100, v0, s4\n    addi v9, v9, 1\ns4: beq  sp, v0, s5\n    addi v9, v9, 1\ns5: li   v10, 0xBAD              ; now trash them: none of this may survive the return\n    li   v11, 0xBAD\n    li   v50, 0xBAD\n    li   v100, 0xBAD\n    li   sp, 0xBAD\n    mv   v1, v8\n    mv   v2, v9\n    cretx\n"
+  },
+  "sigil": {
+   "console": "[kernelloom] Veylith 128-Native v1 booting user program\nHi\nsigil capabilities: ok\n[kernelloom] user exit 0",
+   "glyphs": 5430,
+   "exit": 0,
+   "c_machine_identical": true,
+   "source": "; Sigil capabilities in Kernelloom: a worker that can reach memory ONLY through a capability it was handed.\n; Task 1 mints a 64-byte region (capget), narrows it, and passes the narrowed 128-bit capability to a worker as its spawn\n; argument. The worker enters capability mode, writes through the capability, and prints through it with cwrite.\n.equ USER_BASE, 0x10000\n.org USER_BASE\n_start:\n    li   sp, 0x1F000\n    la   v2, region\n    li   v3, 6                   ; 2^6 = 64 bytes, naturally aligned\n    li   v4, 7                   ; READ | WRITE | NARROW\n    li   v1, 10\n    sys  0                       ; capget\n    mv   v20, v1                 ; the full-region capability\n    li   v21, 1 | 5 << 8 | 32 << 16\n    cnarrow v22, v20, v21        ; READ-only window on the upper half (kept to show derivation; not handed out)\n    li   v21, 3 | 5 << 8\n    cnarrow v23, v20, v21        ; READ|WRITE, lower 32 bytes; narrowed capabilities lose NARROW, so they cannot be widened\n    la   v2, worker\n    li   v3, 0x1E000\n    mv   v4, v23                 ; the capability itself is the argument: all 128 bits travel in one register\n    li   v1, 6\n    sys  0\n    mv   v24, v1\n    li   v1, 9                   ; recv: the worker reports when it is done\n    sys  0\n    mv   v2, v24\n    li   v1, 7\n    sys  0                       ; join\n    la   v5, region\n    lq   v6, [v5 + 16]           ; plain load by task 1: the worker's 128-bit write is there\n    li   v7, 0x5349474C5F4F4B21F00DFACE0000BEEF\n    bne  v6, v7, bad\n    la   v2, msg_ok\n    li   v3, 23\n    li   v1, 1\n    sys  0\n    li   v2, 0\n    li   v1, 2\n    sys  0\nbad:\n    la   v2, msg_bad\n    li   v3, 4\n    li   v1, 1\n    sys  0\n    li   v2, 1\n    li   v1, 2\n    sys  0\n\nworker:                          ; v1 = capability to region[0..32), READ|WRITE\n    mv   v20, v1\n    li   v1, 11\n    sys  0                       ; cmode: from here on raw loads and stores trap\n    li   v6, 0x5349474C5F4F4B21F00DFACE0000BEEF\n    csq  [v20 + 16], v6          ; 128-bit store through the capability\n    li   v8, 0x48                ; \"Hi\\n\" at +0\n    csb  [v20 + 0], v8\n    li   v8, 0x69\n    csb  [v20 + 1], v8\n    li   v8, 0x0A\n    csb  [v20 + 2], v8\n    mv   v2, v20                 ; cwrite: the console buffer is named by the capability, not by a raw pointer\n    li   v3, 3\n    li   v1, 12\n    sys  0\n    li   v1, 8                   ; send \"done\" to task 1\n    li   v2, 1\n    li   v3, 1\n    sys  0\n    li   v1, 2\n    li   v2, 0\n    sys  0\n.align 64\nregion: .space 64\nmsg_ok:  .ascii \"sigil capabilities: ok\\n\"\nmsg_bad: .ascii \"BAD\\n\"\n"
+  },
+  "sigilforge": {
+   "console": "[kernelloom] Veylith 128-Native v1 booting user program\n[kernelloom] user fault cause=8 tval=168811955464684315858783496655603761322",
+   "glyphs": 1730,
+   "exit": 136,
+   "c_machine_identical": true,
+   "source": "; Sigil negative test 1: a task in capability mode tries to use a forged capability (a made-up 128-bit value).\n; The hardware raises a CAPABILITY trap and Kernelloom reports it as a user fault.\n.equ USER_BASE, 0x10000\n.org USER_BASE\n_start:\n    li   sp, 0x1F000\n    li   v1, 11\n    sys  0\n    li   v3, 0x7F0000000000000000000000000000AA       ; a plausible-looking but forged capability\n    clq  v4, [v3 + 0]\n    li   v2, 0\n    li   v1, 2\n    sys  0\n"
+  },
+  "sigilraw": {
+   "console": "[kernelloom] Veylith 128-Native v1 booting user program\n[kernelloom] user fault cause=8 tval=65664",
+   "glyphs": 1389,
+   "exit": 136,
+   "c_machine_identical": true,
+   "source": "; Sigil negative test 2: a task in capability mode attempts a raw load. Raw memory access is forbidden there.\n.equ USER_BASE, 0x10000\n.org USER_BASE\n_start:\n    li   sp, 0x1F000\n    li   v1, 11\n    sys  0\n    la   v5, data\n    lq   v4, [v5 + 0]\n    li   v2, 0\n    li   v1, 2\n    sys  0\n.align 16\ndata: .space 16\n"
+  }
+ },
+ "inspector": {
+  "key": "0x1234567890abcdef1234567890abcdef",
+  "cap": "0x9be31fca740707000000000000009000",
+  "region": [
+   36864,
+   128
+  ],
+  "valid": true,
+  "tampered_bits_accepted": 0
+ },
+ "bench": {
+  "calls_measured": 100,
+  "glyphs_per_gate_call_empty_service": 2,
+  "glyphs_per_gate_call_counter_service": 6.0,
+  "glyphs_per_isolated_gate_call_counter_service": 6.0,
+  "isolated_call_register_quads_spilled_and_restored": 254,
+  "glyphs_per_null_syscall_round_trip": 286.1,
+  "glyphs_per_yield_context_switch": 877.5
+ },
+ "unit_tests": 66,
+ "fuzz": {
+  "programs": 3000,
+  "passed": true,
+  "divergences": 0,
+  "seconds": 149.6,
+  "machines": "Python big-integer reference vs C unsigned __int128",
+  "instructions_per_program": "about 634 retired Glyphs on average"
+ }
+}

@@ -127,7 +127,7 @@ class NativeMachine(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             exe=os.path.join(d,"vvm");r=subprocess.run([cc,"-std=c11","-O2","-o",exe,"native/veylith-vm.c"],capture_output=True)
             if r.returncode:self.skipTest("C machine did not build")
-            for ex in ("hello","factorial","native128","badptr","process_info","threads","pingpong","threadedge","threaddead","preempt","sigil","sigilforge","sigilraw","gate","gateswitch"):
+            for ex in ("hello","factorial","native128","badptr","process_info","threads","pingpong","threadedge","threaddead","preempt","sigil","sigilforge","sigilraw","gate","gateswitch","gateiso"):
                 img=os.path.join(d,ex+".img");
                 with open(img,"wb") as f:f.write(disk.build(read("kernel/kernelloom.s"),read(f"examples/{ex}.s")))
                 c=subprocess.run([exe,img],capture_output=True,text=True);m=Kernelloom.boot(Kernelloom,f"examples/{ex}.s")
@@ -188,7 +188,7 @@ class Sigil(unittest.TestCase):
         pre="li v1, 0x77\ncsrw ckey, v1\nli v2, 0x4800\nli v3, 0x0707\ncmint v4, v2, v3\ncseal v5, v4\n"
         self.assertEqual(run(src.replace("tret",pre+"tret",1),steps=1000).v[121],isa.CAUSE_PRIVILEGE)
     def gate_machine(self,user,svc,perms=0x0F):
-        pre=Timer.PRE.replace("tret","")+f"li v1, 0x77\ncsrw ckey, v1\nli v2, 0x4800\nli v3, {perms|8<<8}\ncmint v4, v2, v3\ncseal v5, v4\ntret\n"
+        pre=Timer.PRE.replace("tret","")+f"li v1, 0x77\ncsrw ckey, v1\nli v2, 0x4800\nli v3, {perms|8<<8}\ncmint v4, v2, v3\ncseal v5, v4\nli v1, 0x6000\ncsrw cstack, v1\ntret\n"
         src=pre+".org 0x4000\n"+user+"\nsys 1\n.org 0x4800\n"+svc+"\nhandler:\ncsrr v121, tcause\ncsrr v122, clink\nhalt"
         return run(src,steps=2000)
     def test_gate_call_and_return(self):
@@ -200,12 +200,26 @@ class Sigil(unittest.TestCase):
                                     ("sealed but not a gate","ccall v6, v5","cretn",0x07),("nested call","ccall v6, v5","ccall v6, v5\ncretn",0x0F),
                                     ("return with no call","cretn","cretn",0x0F)):
             m=self.gate_machine(user,svc,perms);self.assertEqual(m.v[121],isa.CAUSE_CAPABILITY,name)
+    def test_isolated_call_hides_and_restores_registers(self):
+        m=self.gate_machine("li v10, 0x77\nli v1, 3\nli v2, 4\nli v9, 0x99\nccalx v6, v5\nmv v11, v1\nmv v12, v2","mv v13, v10\nmv v14, v9\nadd v1, v1, v2\ncinfo v2, v6\nli v10, 0xBAD\ncretx")
+        self.assertEqual((m.v[121],m.v[122]),(isa.CAUSE_SYSCALL,0))
+        self.assertEqual((m.v[11],m.v[12]),(7,(1<<127)|(7<<80)|(8<<72)|0x4800))   # results travel back in v1 and v2; the callee held its own data capability
+        self.assertEqual((m.v[10],m.v[9]),(0x77,0x99))           # the callee's clobbering is undone
+        self.assertEqual((m.v[13],m.v[14]),(0,0))                # the callee saw no caller secrets
+        self.assertEqual(m.v[6],0)                              # and rd is the caller's own value again after the return
+    def test_isolated_and_shared_returns_do_not_mix(self):
+        for name,user,svc in (("cretn after ccalx","ccalx v6, v5","cretn"),("cretx after ccall","ccall v6, v5","cretx"),("cretx with no call","cretx","cretx")):
+            self.assertEqual(self.gate_machine(user,svc).v[121],isa.CAUSE_CAPABILITY,name)
+    def test_isolated_call_needs_a_save_area(self):
+        pre=Timer.PRE.replace("tret","")+"li v1, 0x77\ncsrw ckey, v1\nli v2, 0x4800\nli v3, 0x080F\ncmint v4, v2, v3\ncseal v5, v4\ntret\n"
+        m=run(pre+".org 0x4000\nccalx v6, v5\nsys 1\n.org 0x4800\ncretx\nhandler:\ncsrr v121, tcause\nhalt",steps=2000)
+        self.assertEqual(m.v[121],isa.CAUSE_CAPABILITY)
     def test_a_gate_exposes_only_its_entry_point(self):
         # a sealed gate cannot be used to load, store, narrow or jump anywhere but the region base
         for src in ("clb v7, [v5 + 0]","csb [v5 + 0], v0","li v6, 5\ncnarrow v7, v5, v6","jr v5"):
             self.assertEqual(self.gate_machine(src,"cretn").v[121]!=isa.CAUSE_SYSCALL,True,src)
     def test_kernelloom_gate_examples(self):
-        for ex,msg in (("examples/gate.s","gate: ok\n"),("examples/gateswitch.s","gate switching: ok\n")):
+        for ex,msg in (("examples/gate.s","gate: ok\n"),("examples/gateswitch.s","gate switching: ok\n"),("examples/gateiso.s","gate isolation: ok\n")):
             m=Kernelloom.boot(Kernelloom,ex);self.assertIn(msg,m.console.decode(),ex);self.assertEqual((m.stop_reason,m.exit_code),("halt",0),ex)
     def test_only_the_kernel_can_mint(self):
         src=Timer.PRE+"tret\n.org 0x4000\nli v2, 0x4000\nli v3, 0x0707\ncmint v4, v2, v3\nhalt\nhandler:\ncsrr v121, tcause\nhalt"

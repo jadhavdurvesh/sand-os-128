@@ -8,6 +8,7 @@ from tests.test_veylith import Kernelloom
 read = lambda p: open(os.path.join(root, p)).read()
 SCENES = [
  ("gate", "examples/gate.s", "Call gate: protected counter service", "A sealed GATE capability is the only way in. The client runs in capability mode and cannot touch the counter; each call is ccall + service body + cretn with no kernel trap."),
+ ("gateiso", "examples/gateiso.s", "Isolated gate call: registers hidden and restored", "ccalx spills the caller's registers outside its aperture and clears them; the service reports what it could see (nothing), trashes its registers, and cretx restores the caller's."),
  ("gateswitch", "examples/gateswitch.s", "Gate calls survive context switches", "Two tasks call the same service, which yields mid-call. Each returns to its own caller because the return link is saved per task."),
  ("sigilforge", "examples/sigilforge.s", "Forged capability is stopped", "A made-up 128-bit value is not a capability: the MAC fails and the hardware raises CAPABILITY (cause 8). Exit 136 is the expected result."),
  ("sigil", "examples/sigil.s", "Capability handed to a worker", "A narrowed 128-bit capability travels as one register value to a worker that can reach memory only through it."),

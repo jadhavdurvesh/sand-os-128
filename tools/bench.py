@@ -154,10 +154,14 @@ sys 0"""
     P = ".org 0x10000\nli sp, 0x1F000\n"
     gate_src = (P + f"la v2, svc\nli v3, 8\nli v4, 15\nli v1, 10\nsys 0\ncseal v30, v1\nli v9, {N}\nl:\nccall v20, v30\naddi v9, v9, -1\nbne v9, v0, l\n" + tail +
                 ".align 256\nsvc:\nclq v6, [v20 + 128]\naddi v6, v6, 1\ncsq [v20 + 128], v6\nmv v1, v6\ncretn\n.space 160\n")
+    iso_src = gate_src.replace("ccall v20, v30", "ccalx v20, v30").replace("mv v1, v6\ncretn", "mv v1, v6\ncretx")
+    iso = boot(iso_src).cycles
+    iso_base = boot(iso_src.replace("ccalx v20, v30\n", "")).cycles
     gate = boot(gate_src).cycles
     gate_base = boot(gate_src.replace("ccall v20, v30\n", "")).cycles
     R["sigil_gate"] = {"calls_measured": N, "glyphs_per_gate_call_empty_service": 2,   # ccall + cretn
                        "glyphs_per_gate_call_counter_service": round((gate - gate_base) / N, 2),
+                       "glyphs_per_isolated_gate_call_counter_service": round((iso - iso_base) / N, 2), "isolated_call_register_quads_spilled_and_restored": 128 + 126,
                        "glyphs_per_null_syscall_round_trip": R["syscall_getpid"]["extra_glyphs_per_call"],
                        "glyphs_per_yield_context_switch": R["yield_context_switch"]["extra_glyphs_per_yield"]}
     # 5. image sizes

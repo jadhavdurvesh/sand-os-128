@@ -78,12 +78,14 @@ python3 -m veylith boot examples/sigil.s      # Sigil capabilities: mint, narrow
 python3 -m veylith boot examples/sigilforge.s # forged capability -> CAPABILITY fault (exit 136)
 python3 -m veylith boot examples/sigilraw.s   # raw access in capability mode -> CAPABILITY fault
 python3 -m veylith boot examples/gate.s       # Sigil call gate: ccall/cretn protected service, no kernel trap per call
+python3 -m veylith boot examples/gateiso.s    # isolated gate call: ccalx/cretx hide and restore the caller's registers
+xdg-open web/sigil-lab.html                    # Sigil Lab: desktop-style viewer of real gate traces and capabilities (open the file in a browser)
 python3 -m veylith boot examples/gateswitch.s # gate calls survive context switches
 python3 -m veylith boot examples/preempt.s    # two spinning tasks, no yield: only the timer interrupt lets them share the CPU
 python3 -m veylith asm prog.s -o prog.vyl     # assemble
 python3 -m veylith dis prog.vyl               # disassemble
 python3 -m veylith run kernel.vyl user.vyl --trace trace.jsonl
-python3 -m unittest discover -s tests         # 63 tests
+python3 -m unittest discover -s tests         # 66 tests
 ```
 
 ## Repository layout
