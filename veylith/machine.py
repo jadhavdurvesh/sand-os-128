@@ -116,6 +116,8 @@ class Machine:
         self.use_vok = True                      # False = verify the MAC on every use (flag-free baseline)
         self.vok_audit = False                   # True = assert every flag hit is really a valid capability
         self.cstats = {"uses": 0, "macs": 0}     # capability uses vs MAC computations
+        self.dirty = 0                           # bitmask of registers written since the host last cleared it
+        self.touched = 0                         # bitmask of registers named by any executed Glyph since cleared
         self.opcount = {}                        # executed Glyphs by mnemonic
         self.access_log = None                   # optional list of (kind, addr, size) for memory-system models
         self.trace = None
@@ -220,6 +222,7 @@ class Machine:
         if rd:
             self.v[rd] = value & MASK
             self.vok[rd] = False
+            self.dirty |= 1 << rd
 
     def _cp(self, rd, value):
         """Write a capability the machine itself just minted: its MAC is valid by construction."""
@@ -291,6 +294,7 @@ class Machine:
     def _execute(self, dec, pc):
         name, rd, ra, rb, imm = dec
         v = self.v
+        self.touched |= (1 << rd) | (1 << ra) | (1 << rb)
         a, b = v[ra], v[rb]
         simm = sext(imm, isa.IMM_BITS) & MASK
         nxt = (pc + isa.GLYPH_BYTES) & MASK
@@ -353,6 +357,7 @@ class Machine:
                 if i > 4:
                     self.v[i] = 0
                     self.vok[i] = False
+                    self.dirty |= 1 << i
             self._cp(rd, data)
             self.csr[13] = nxt | (1 << 127)
             newpc = p[0]
@@ -363,6 +368,7 @@ class Machine:
             for i in range(3, 129):                 # v1 and v2 carry the results back; everything else is the caller's again
                 self.v[i] = int.from_bytes(self.ram[cs + 16 * (i - 1):cs + 16 * i], "little")
                 self.vok[i] = False
+                self.dirty |= 1 << i
             newpc, self.csr[13] = self.csr[13] & ((1 << 127) - 1), 0
         elif name == "cretn":
             if not self.csr[13] or self.csr[13] >> 127:

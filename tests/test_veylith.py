@@ -302,6 +302,25 @@ class Workload(unittest.TestCase):
         import workloads
         a=workloads.run(workloads.build(False,3),3)[1];b=workloads.run(workloads.build(True,3),3)[1]
         self.assertEqual(a,sorted(a));self.assertEqual(a,b);self.assertEqual(len(workloads.PAIRS),63)
+class CycleModel(unittest.TestCase):
+    def test_workloads_are_correct_and_flags_only_remove_macs(self):
+        import sys
+        sys.path.insert(0,os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),"tools"))
+        import cyclemodel as cm
+        for name,(gen,_,check) in cm.WORKLOADS.items():
+            raw,_=cm.execute(gen(False,1)); on,_=cm.execute(gen(True,1),flags=True); off,_=cm.execute(gen(True,1),flags=False)
+            self.assertTrue(check(raw,1) and check(on,1) and check(off,1),name)
+            self.assertEqual((on.cycles,on.v[15]),(off.cycles,off.v[15]),name)
+            self.assertEqual(off.cstats["macs"],off.cstats["uses"]); self.assertLessEqual(on.cstats["macs"],off.cstats["macs"])
+    def test_tag_cache_counts_compulsory_and_conflict_misses(self):
+        import sys
+        sys.path.insert(0,os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),"tools"))
+        import cyclemodel as cm
+        log=[("r",0,16),("r",8192,16),("r",0,16),("r",8192,16)]
+        self.assertEqual((cm.tag_misses(log,1),cm.tag_misses(log,2)),(4,2))
+    def test_dirty_mask_tracks_writes(self):
+        m=Machine();m.load(asm.assemble("li v3, 1\naddi v4, v3, 1\nhalt"));m.run(10)
+        self.assertEqual(m.dirty&0b11000,0b11000)
 class Fragmentation(unittest.TestCase):
     def test_rounding_and_buddy(self):
         import sys

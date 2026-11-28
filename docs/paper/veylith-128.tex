@@ -105,13 +105,42 @@ Sorting network: capability accesses / total Glyphs & \SortFrac\\\bottomrule
 \paragraph{Comparison with CHERI's published numbers.} Our \GateCall{}-Glyph gate and CHERI's reported 500-cycle software-handler CCall are not comparable: they differ in unit (retired instructions against cycles), machine, and what is included (trusted-stack push, register clearing). The fair statement is only that our gate resembles the hypothetical hardware crossing that the CHERI authors evaluated, which they report as a further 145-cycle saving over their fastest software path \citep{cheridomain}. A like-for-like comparison needs a cycle model of both on one microarchitecture.
 \paragraph{Reading the results.} Native 128-bit arithmetic wins where the data is 128 bits wide, as expected. The surprise is the cost side. The 128-register, 128-bit file makes a context switch expensive: our first kernel copied frames in a loop and spent about 1\,900 Glyphs per switch (38.6\% overhead at a 3000-Glyph quantum); unrolling the copies halved it to the figure above. The floor is set by the architecture: 129 quads must be moved out and 129 in, around the trap's own save and restore of the same registers. This is the clearest quantitative finding of the work, and it motivates the proposals below.
 
+\section{Amortizing the capability check}\label{sec:amortize}
+A tag-free capability pays for its missing tag bit with a MAC, and the obvious worry is that every load and store through one pays the MAC's latency. We evaluate a microarchitectural remedy that changes no architectural result. Each register carries a one-bit \emph{verified} flag. The machine sets it when a capability instruction mints the value (\texttt{cmint}, \texttt{cnarrow}, \texttt{cseal}, \texttt{cunseal}, the data capability of a gate call) or after the first successful MAC check of a register, and clears it on every other write to that register, on the register spill and refill of an isolated call, and on every change of the key. Memory stays tag-free; a capability loaded from memory is simply unverified once, and a context switch needs no flag state because refilled registers are written by ordinary loads. A test runs every random program of the differential fuzzer with flags on (with an audit that recomputes the MAC on each flag hit) and off, and requires identical console output, registers, memory and retired-Glyph counts.
+
+We added indexed capability accesses (\texttt{clbx}, \texttt{clqx}, \texttt{csbx}, \texttt{csqx}; the offset is a register) because array code with run-time indices was not expressible with immediate offsets. Five workloads (\texttt{tools/cyclemodel.py}) run through raw loads and stores and through capabilities; each is checked against an independent Python computation. They are an insertion sort, an $8\times8$ matrix multiply, an open-addressing hash table, a byte checksum, and a linked-list walk in which each node's \texttt{next} field \emph{is} a capability, the adversarial case for the flag because every hop loads an unverified register.
+\begin{table}[h]\centering\small
+\begin{tabular}{@{}lrrrrr@{}}\toprule
+Workload & Glyphs raw & Glyphs cap. & Cap.\ uses & MACs with flag & MACs saved\\\midrule
+\CycRows\bottomrule
+\end{tabular}
+\caption{Measured on the reference machine. The capability builds retire fewer Glyphs than the raw builds only because the raw ISA has no indexed addressing and pays an \texttt{add} per access; the fair comparison is column 3 against columns 4--5.}
+\end{table}
+\begin{table}[h]\centering\small
+\begin{tabular}{@{}lrrrrr@{}}\toprule
+& \multicolumn{2}{c}{$L=2$ cycles} & \multicolumn{2}{c}{$L=8$ cycles} & CHERI-style\\
+Workload & no flag & flag & no flag & flag & tag cache, $M=30$\\\midrule
+\OvhRows\bottomrule
+\end{tabular}
+\caption{Modelled slowdown (percent) over the same capability code with free checks, if a MAC check costs $L$ cycles. The last column models a tag cache of four 64-byte tag lines (each covering 8\,KiB) with a 30-cycle miss. Every modelled value is a linear function of a parameter we do not know; the tables span the range instead of choosing a value.}
+\end{table}
+\paragraph{Results.} Where a capability register is reused, as in loops over an array, one MAC check amortizes over thousands of accesses and the flag removes essentially all of the modelled overhead (Table 2, columns 2--5). Without the flag the same code would be slowed by 28--63\% at $L=2$ and 110--250\% at $L=8$, so \emph{the MAC is only viable with some caching of verification}. In the pointer-chasing walk half the uses still need a MAC and the modelled overhead is 31\% at $L=2$ and 125\% at $L=8$: tag-free capabilities loaded from memory cost one check per new pointer, which a tagged design does not pay in cycles. The CHERI-style baseline is nearly free here because every workload's footprint is a few KiB and the tag cache sees only compulsory misses; it would not stay free for large working sets, which we did not measure. We therefore make no claim that Sigil is faster than tagged capabilities. The defensible claim is narrower: it needs no tag memory or tag controller, and the cost of that choice concentrates in pointer-chasing code.
+\paragraph{Register-file state per quantum.} Instrumenting the machine to record which registers are written (or named) in each 3000-Glyph quantum gives Table 3. At most 16 of 128 registers are written in any quantum of these programs, so a hardware dirty mask would avoid between 87\% (worst quantum) and 96\% (best mean) of the register words moved on a context switch, if programs resemble these. They are small, hand-written kernels; a compiler-generated program with many live values would dirty more.
+\begin{table}[h]\centering\small
+\begin{tabular}{@{}lrrrr@{}}\toprule
+Workload & written, mean & written, max & named, mean & named, max\\\midrule
+\DirtRows\bottomrule
+\end{tabular}
+\caption{Distinct registers (of 128) per 3000-Glyph quantum.}
+\end{table}
+
 \section{Gap analysis and research agenda}\label{sec:gaps}
 \begin{description}
-\item[Sigil next steps.] Measure the MAC's hardware latency; extend the implemented sealed tokens (\texttt{cseal}/\texttt{cunseal}) into call gates with entry-point binding, add per-object revocation (an epoch or generation field); implement the mantissa-length variant the allocation traces argue for and re-measure; specify the interaction with paging; model online-guessing policy.
+\item[Sigil next steps.] Measure the MAC's hardware latency (we only parameterize it, Section~\ref{sec:amortize}); extend the implemented sealed tokens (\texttt{cseal}/\texttt{cunseal}) into call gates with entry-point binding, add per-object revocation (an epoch or generation field); implement the mantissa-length variant the allocation traces argue for and re-measure; specify the interaction with paging; model online-guessing policy.
 \item[Virtual memory.] Only aperture protection exists. A 128-bit address with 128-bit page-table entries would leave tens of spare bits per entry for capabilities, tags or permission domains, but the number of translation levels needed for a sparse 128-bit space (or an alternative such as hashed or segmented translation) is an open design question. \emph{Not implemented.}
-\item[Context-switch cost.] Proposals to evaluate: a dirty-register mask maintained by hardware, banked register windows, or block-move Glyphs that transfer several quads per instruction. Each must be modelled for its effect on the (so far unmodelled) microarchitecture.
+\item[Context-switch cost.] Section~\ref{sec:amortize} measures how few registers a quantum dirties; proposals still to build and evaluate: a dirty-register mask maintained by hardware, banked register windows, or block-move Glyphs that transfer several quads per instruction. Each must be modelled for its effect on the (so far unmodelled) microarchitecture.
 \item[Code density.] A 16-byte Glyph is simple to decode and carries an 88-bit immediate, but most immediates are small. Density against a compressed encoding has not been measured on real programs.
-\item[Pointer and data footprint.] 128-bit pointers double the footprint of pointer-heavy structures relative to 64 bits. Not measured: there is no compiler and no realistic workload.
+\item[Pointer and data footprint.] 128-bit pointers double the footprint of pointer-heavy structures relative to 64 bits. Only five small hand-written workloads exist; no compiler and no large-footprint program.
 \item[Atomics, multi-core, memory model.] Single core, deterministic, no atomics. A 128-bit compare-and-swap is natural; its memory-model consequences are untreated.
 \item[Floating point and vectors; numerical systems.] None implemented. The repository's numerical-systems programme (base-60, balanced ternary, residue systems) is a research plan, not a result.
 \item[Device interrupts and I/O.] One interrupt source. The console and framebuffer are memory-mapped windows in the top of the address space.

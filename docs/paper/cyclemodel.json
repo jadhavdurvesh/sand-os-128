@@ -1,0 +1,243 @@
+{
+ "quantum_glyphs": 3000,
+ "registers": 128,
+ "rows": [
+  {
+   "workload": "insertion sort (64 x 128-bit)",
+   "glyphs_raw": 70939,
+   "glyphs_cap": 57070,
+   "cap_uses": 13871,
+   "macs_flags": 0,
+   "macs_noflags": 13871,
+   "data_accesses": 13871,
+   "footprint_bytes": 1024,
+   "tag_misses": {
+    "1": 1,
+    "2": 1,
+    "4": 1
+   },
+   "quanta": 23,
+   "dirty_mean": 9.7,
+   "dirty_max": 14,
+   "touched_mean": 10.9,
+   "touched_max": 14
+  },
+  {
+   "workload": "matrix multiply (8x8, 128-bit)",
+   "glyphs_raw": 30045,
+   "glyphs_cap": 26399,
+   "cap_uses": 3648,
+   "macs_flags": 0,
+   "macs_noflags": 3648,
+   "data_accesses": 3648,
+   "footprint_bytes": 3072,
+   "tag_misses": {
+    "1": 1,
+    "2": 1,
+    "4": 1
+   },
+   "quanta": 10,
+   "dirty_mean": 11.4,
+   "dirty_max": 16,
+   "touched_mean": 12.6,
+   "touched_max": 16
+  },
+  {
+   "workload": "hash table (192 keys / 256 slots)",
+   "glyphs_raw": 59736,
+   "glyphs_cap": 52166,
+   "cap_uses": 7572,
+   "macs_flags": 0,
+   "macs_noflags": 7572,
+   "data_accesses": 7572,
+   "footprint_bytes": 4096,
+   "tag_misses": {
+    "1": 1,
+    "2": 1,
+    "4": 1
+   },
+   "quanta": 19,
+   "dirty_mean": 9.3,
+   "dirty_max": 14,
+   "touched_mean": 12.1,
+   "touched_max": 14
+  },
+  {
+   "workload": "byte checksum (2 KiB)",
+   "glyphs_raw": 106526,
+   "glyphs_cap": 90144,
+   "cap_uses": 16384,
+   "macs_flags": 0,
+   "macs_noflags": 16384,
+   "data_accesses": 16384,
+   "footprint_bytes": 2048,
+   "tag_misses": {
+    "1": 1,
+    "2": 1,
+    "4": 1
+   },
+   "quanta": 35,
+   "dirty_mean": 4.6,
+   "dirty_max": 9,
+   "touched_mean": 7.1,
+   "touched_max": 10
+  },
+  {
+   "workload": "linked list (cap in node)",
+   "glyphs_raw": 32424,
+   "glyphs_cap": 32552,
+   "cap_uses": 10240,
+   "macs_flags": 5080,
+   "macs_noflags": 10240,
+   "data_accesses": 10496,
+   "footprint_bytes": 4096,
+   "tag_misses": {
+    "1": 1,
+    "2": 1,
+    "4": 1
+   },
+   "quanta": 10,
+   "dirty_mean": 6.5,
+   "dirty_max": 11,
+   "touched_mean": 7.4,
+   "touched_max": 11
+  }
+ ],
+ "model": [
+  {
+   "workload": "insertion sort (64 x 128-bit)",
+   "sigil_flags": {
+    "1": 0.0,
+    "2": 0.0,
+    "4": 0.0,
+    "8": 0.0,
+    "12": 0.0
+   },
+   "sigil_noflags": {
+    "1": 24.31,
+    "2": 48.61,
+    "4": 97.22,
+    "8": 194.44,
+    "12": 291.66
+   },
+   "tagcache_4lines": {
+    "10": 0.02,
+    "30": 0.05,
+    "100": 0.18
+   },
+   "tagcache_1line": {
+    "10": 0.02,
+    "30": 0.05,
+    "100": 0.18
+   }
+  },
+  {
+   "workload": "matrix multiply (8x8, 128-bit)",
+   "sigil_flags": {
+    "1": 0.0,
+    "2": 0.0,
+    "4": 0.0,
+    "8": 0.0,
+    "12": 0.0
+   },
+   "sigil_noflags": {
+    "1": 13.82,
+    "2": 27.64,
+    "4": 55.27,
+    "8": 110.55,
+    "12": 165.82
+   },
+   "tagcache_4lines": {
+    "10": 0.04,
+    "30": 0.11,
+    "100": 0.38
+   },
+   "tagcache_1line": {
+    "10": 0.04,
+    "30": 0.11,
+    "100": 0.38
+   }
+  },
+  {
+   "workload": "hash table (192 keys / 256 slots)",
+   "sigil_flags": {
+    "1": 0.0,
+    "2": 0.0,
+    "4": 0.0,
+    "8": 0.0,
+    "12": 0.0
+   },
+   "sigil_noflags": {
+    "1": 14.52,
+    "2": 29.03,
+    "4": 58.06,
+    "8": 116.12,
+    "12": 174.18
+   },
+   "tagcache_4lines": {
+    "10": 0.02,
+    "30": 0.06,
+    "100": 0.19
+   },
+   "tagcache_1line": {
+    "10": 0.02,
+    "30": 0.06,
+    "100": 0.19
+   }
+  },
+  {
+   "workload": "byte checksum (2 KiB)",
+   "sigil_flags": {
+    "1": 0.0,
+    "2": 0.0,
+    "4": 0.0,
+    "8": 0.0,
+    "12": 0.0
+   },
+   "sigil_noflags": {
+    "1": 18.18,
+    "2": 36.35,
+    "4": 72.7,
+    "8": 145.4,
+    "12": 218.1
+   },
+   "tagcache_4lines": {
+    "10": 0.01,
+    "30": 0.03,
+    "100": 0.11
+   },
+   "tagcache_1line": {
+    "10": 0.01,
+    "30": 0.03,
+    "100": 0.11
+   }
+  },
+  {
+   "workload": "linked list (cap in node)",
+   "sigil_flags": {
+    "1": 15.61,
+    "2": 31.21,
+    "4": 62.42,
+    "8": 124.85,
+    "12": 187.27
+   },
+   "sigil_noflags": {
+    "1": 31.46,
+    "2": 62.91,
+    "4": 125.83,
+    "8": 251.66,
+    "12": 377.49
+   },
+   "tagcache_4lines": {
+    "10": 0.03,
+    "30": 0.09,
+    "100": 0.31
+   },
+   "tagcache_1line": {
+    "10": 0.03,
+    "30": 0.09,
+    "100": 0.31
+   }
+  }
+ ]
+}
