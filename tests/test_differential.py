@@ -53,6 +53,10 @@ def program(seed, length=220):
                 L.append(f"{rng.choice(['cseal', 'cunseal'])} {rng.choice([cr(), reg()])}, {rng.choice([cr(), reg()])}")
             elif j < 0.45:
                 L.append(f"cinfo {reg()}, {rng.choice([cr(), reg()])}")
+            elif j < 0.55:
+                L.append(f"li v13, {rng.choice([rng.randrange(0, 280), -1, 1 << 100])}")
+                op = rng.choice(["clbx", "clqx", "csbx", "csqx"])
+                L.append(f"{op} {reg()}, {cr()}, v13")
             elif j < 0.8:
                 op = rng.choice(["clb", "clq"]); w = 1 if op == "clb" else 16
                 L.append(f"{op} {reg()}, [{cr()} + {rng.choice([rng.randrange(0, 280, w), -w, 260])}]")
@@ -104,6 +108,25 @@ def program(seed, length=220):
 def run_python(src):
     m = Machine(1 << 20); m.load(asm.assemble(src)); m.run(200000)
     return m.console.decode(), m.cycles, m.stop_reason
+
+
+def run_flags(src, flags):
+    m = Machine(1 << 20); m.use_vok = flags; m.vok_audit = flags; m.load(asm.assemble(src)); m.run(200000)
+    return m.console.decode(), m.cycles, m.stop_reason, list(m.v), bytes(m.ram[:1 << 16]), dict(m.cstats)
+
+
+class VerifiedFlags(unittest.TestCase):
+    """The verified-register flag is a pure optimisation: architectural results never depend on it."""
+    def test_flags_never_change_behaviour(self):
+        saved = total = 0
+        for seed in range(int(os.environ.get("VEYLITH_FUZZ_N", "150"))):
+            src = program(seed)
+            on, off = run_flags(src, True), run_flags(src, False)
+            self.assertEqual(on[:5], off[:5], f"seed {seed}")
+            self.assertEqual(on[5]["uses"], off[5]["uses"])
+            self.assertLessEqual(on[5]["macs"], off[5]["macs"])
+            saved += off[5]["macs"] - on[5]["macs"]; total += off[5]["uses"]
+        self.assertGreater(saved, 0)
 
 
 @unittest.skipUnless(shutil.which("gcc") or shutil.which("cc"), "no C compiler")

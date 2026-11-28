@@ -153,6 +153,31 @@ class Sigil(unittest.TestCase):
     def test_load_store_through_a_capability(self):
         m=run(self.KEY+self.MINT+"li v6, 0x1122334455667788AABBCCDDEEFF0011\ncsq [v4 + 16], v6\nclq v7, [v4 + 16]\nli v8, 0xAB\ncsb [v4 + 5], v8\nclb v9, [v4 + 5]\nlb v10, [v2 + 5]\nlq v11, [v2 + 16]\nhalt")
         self.assertEqual((m.v[7],m.v[9],m.v[10],m.v[11]),(0x1122334455667788AABBCCDDEEFF0011,0xAB,0xAB,0x1122334455667788AABBCCDDEEFF0011))
+    def test_verified_flag_amortises_the_mac(self):
+        loop="li v6, 0\nloop:\nclq v7, [v4 + 0]\naddi v6, v6, 1\nli v8, 50\nbne v6, v8, loop\nhalt"
+        m=run(self.KEY+self.MINT+loop,steps=2000)
+        self.assertEqual((m.cstats["uses"],m.cstats["macs"]),(50,0))              # minted by cmint: valid by construction
+        m=run(self.KEY+self.MINT+"mv v5, v4\nxori v5, v5, 0\n"+loop.replace("v4","v5"),steps=2000)
+        self.assertEqual((m.cstats["uses"],m.cstats["macs"]),(50,1))              # xori wrote v5, so the first use verifies once and later uses hit the flag
+    def test_overwriting_a_verified_register_forces_reverification(self):
+        src=self.KEY+self.MINT+"clq v7, [v4 + 0]\nli v9, 1\nshli v9, v9, 70\nxor v4, v4, v9\nclq v7, [v4 + 0]"
+        self.assertEqual(trap(src)[0],isa.CAUSE_CAPABILITY)
+    def test_new_key_revokes_verified_registers(self):
+        src=self.KEY+self.MINT+"clq v7, [v4 + 0]\nli v1, 99\ncsrw ckey, v1\nclq v7, [v4 + 0]"
+        self.assertEqual(trap(src)[0],isa.CAUSE_CAPABILITY)
+    def test_flags_off_gives_identical_results(self):
+        src=self.KEY+self.MINT+"li v6, 7\ncsq [v4 + 16], v6\nclq v7, [v4 + 16]\nhalt"
+        a=run(src); b=Machine(); b.use_vok=False; b.load(asm.assemble(src)); b.run(1000)
+        self.assertEqual((a.v,a.cycles),(b.v,b.cycles)); self.assertGreater(b.cstats["macs"],a.cstats["macs"])
+    def test_indexed_load_store(self):
+        m=run(self.KEY+self.MINT+"li v6, 0x0123456789ABCDEF0011223344556677\nli v12, 48\ncsqx v6, v4, v12\nclqx v7, v4, v12\nli v8, 0xCD\nli v12, 5\ncsbx v8, v4, v12\nclbx v9, v4, v12\nlb v10, [v2 + 5]\nlq v11, [v2 + 48]\nhalt")
+        self.assertEqual((m.v[7],m.v[9],m.v[10],m.v[11]),(0x0123456789ABCDEF0011223344556677,0xCD,0xCD,0x0123456789ABCDEF0011223344556677))
+    def test_indexed_bounds_trap(self):
+        for idx in ("128","121","-1"):
+            for op in ("clbx v7, v4, v12","clqx v7, v4, v12","csbx v7, v4, v12","csqx v7, v4, v12"):
+                src=self.KEY+self.MINT+f"li v12, {idx}\n{op}"
+                if idx=="128" or op[2]=="q" and idx=="121" or idx=="-1":
+                    self.assertEqual(trap(src)[0],isa.CAUSE_CAPABILITY,(idx,op))
     def test_bounds_permissions_and_forgery_trap(self):
         for src in ("clq v7, [v4 + 128]","clq v7, [v4 + 120]","clb v7, [v4 + -1]","clb v7, [v4 + 128]","csb [v4 + 128], v0","li v6, 1\ncsb [v6 + 0], v0",
                     "li v5, 0x9000\nclb v7, [v5 + 0]"):
@@ -277,6 +302,25 @@ class Workload(unittest.TestCase):
         import workloads
         a=workloads.run(workloads.build(False,3),3)[1];b=workloads.run(workloads.build(True,3),3)[1]
         self.assertEqual(a,sorted(a));self.assertEqual(a,b);self.assertEqual(len(workloads.PAIRS),63)
+class CycleModel(unittest.TestCase):
+    def test_workloads_are_correct_and_flags_only_remove_macs(self):
+        import sys
+        sys.path.insert(0,os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),"tools"))
+        import cyclemodel as cm
+        for name,(gen,_,check) in cm.WORKLOADS.items():
+            raw,_=cm.execute(gen(False,1)); on,_=cm.execute(gen(True,1),flags=True); off,_=cm.execute(gen(True,1),flags=False)
+            self.assertTrue(check(raw,1) and check(on,1) and check(off,1),name)
+            self.assertEqual((on.cycles,on.v[15]),(off.cycles,off.v[15]),name)
+            self.assertEqual(off.cstats["macs"],off.cstats["uses"]); self.assertLessEqual(on.cstats["macs"],off.cstats["macs"])
+    def test_tag_cache_counts_compulsory_and_conflict_misses(self):
+        import sys
+        sys.path.insert(0,os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),"tools"))
+        import cyclemodel as cm
+        log=[("r",0,16),("r",8192,16),("r",0,16),("r",8192,16)]
+        self.assertEqual((cm.tag_misses(log,1),cm.tag_misses(log,2)),(4,2))
+    def test_dirty_mask_tracks_writes(self):
+        m=Machine();m.load(asm.assemble("li v3, 1\naddi v4, v3, 1\nhalt"));m.run(10)
+        self.assertEqual(m.dirty&0b11000,0b11000)
 class Fragmentation(unittest.TestCase):
     def test_rounding_and_buddy(self):
         import sys

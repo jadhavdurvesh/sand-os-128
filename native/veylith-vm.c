@@ -66,7 +66,7 @@ case 0x30:case 0x31:D=I=1;break;case 0x32:case 0x33:D=A=1;break;
 case 0x40:case 0x41:case 0x42:case 0x43:case 0x44:case 0x45:case 0x46:case 0x47:case 0x48:D=A=I=1;break;
 case 0x50:case 0x51:case 0x52:case 0x53:case 0x54:A=B=I=1;break;
 case 0x60:case 0x70:I=1;break;case 0x61:D=I=1;break;case 0x62:D=A=I=1;break;
-case 0x80:case 0x81:D=A=B=1;break;case 0x82:case 0x87:case 0x88:case 0x89:case 0x8B:D=A=1;break;case 0x83:case 0x84:D=A=I=1;break;case 0x85:case 0x86:A=B=I=1;break;
+case 0x80:case 0x81:case 0x8D:case 0x8E:case 0x8F:case 0x90:D=A=B=1;break;case 0x82:case 0x87:case 0x88:case 0x89:case 0x8B:D=A=1;break;case 0x83:case 0x84:D=A=I=1;break;case 0x85:case 0x86:A=B=I=1;break;
 case 0x63:case 0x64:case 0x65:case 0x66:case 0x67:case 0x68:A=B=I=1;break;case 0x72:D=I=1;break;case 0x73:A=I=1;break;default:return 0;}
 return (D||!d)&&(A||!a)&&(B||!b)&&(I||!im)&&d<=128&&a<=128&&b<=128;}
 static void step(Machine*m){u128 pc=m->pc;if(m->priv==1&&m->csr[TIMECMP]&&m->csr[TVEC]&&(u128)m->cycles>=m->csr[TIMECMP]){m->csr[TIMECMP]=0;fault(m,TIMER,0,pc);return;}if(pc>=RAM_SIZE||pc%16){fault(m,pc%16?MISALIGN:ACCESS,pc,pc);return;}u128 raw=le128(m->ram+(size_t)pc);unsigned op=(unsigned)(raw>>112),d=(unsigned)((raw>>104)&255),ai=(unsigned)((raw>>96)&255),bi=(unsigned)((raw>>88)&255);u128 im=raw&IMM_MASK;
@@ -93,8 +93,8 @@ case 0x8C:{u128 cs=m->csr[CSTACK];if(!(m->csr[CLINK]>>127)){fault(m,CAPABILITY,0
 case 0x89:{u128 base;unsigned pe,ex;if(!sigil_parse(m->csr[CKEY],a,&base,&pe,&ex)||(pe&0x88)!=0x88||(base&15)||sigil_size(ex)<16||m->csr[CLINK]){fault(m,CAPABILITY,a,pc);return;}W(sigil_make(m->csr[CKEY],base,pe&~0x88u,ex));m->csr[CLINK]=next;npc=base;break;}
 case 0x8A:{if(!m->csr[CLINK]||(m->csr[CLINK]>>127)){fault(m,CAPABILITY,0,pc);return;}npc=m->csr[CLINK];m->csr[CLINK]=0;break;}
 case 0x88:{if(m->priv){fault(m,PRIVILEGE,0,pc);return;}u128 base;unsigned pe,ex;if(!sigil_parse(m->csr[CKEY],a,&base,&pe,&ex)||!(pe&0x80)){fault(m,CAPABILITY,a,pc);return;}W(sigil_make(m->csr[CKEY],base,pe&~0x80u,ex));break;}
-case 0x83:case 0x84:case 0x85:case 0x86:{u128 base;unsigned pe,ex;unsigned n=(op==0x83||op==0x85)?1:16;int ld=op<=0x84;s128 off=(s128)si;if(!sigil_parse(m->csr[CKEY],a,&base,&pe,&ex)||(pe&0x80)||!(pe&(ld?1u:2u))||off<0||(u128)off+n>sigil_size(ex)){fault(m,CAPABILITY,a,pc);return;}
- if(ld){z=loadn(m,base+(u128)off,n,&e);if(e){fault(m,e,base+(u128)off,pc);return;}wr=1;}else{e=storen(m,base+(u128)off,n,b);if(e){fault(m,e,base+(u128)off,pc);return;}}break;}
+case 0x83:case 0x84:case 0x85:case 0x86:case 0x8D:case 0x8E:case 0x8F:case 0x90:{u128 base;unsigned pe,ex;int ix=op>=0x8D;unsigned n=(op==0x83||op==0x85||op==0x8D||op==0x8F)?1:16;int ld=(op==0x83||op==0x84||op==0x8D||op==0x8E);s128 off=ix?(s128)b:(s128)si;u128 sv=ix?m->v[d]:b;if(!sigil_parse(m->csr[CKEY],a,&base,&pe,&ex)||(pe&0x80)||!(pe&(ld?1u:2u))||off<0||(u128)off+n>sigil_size(ex)){fault(m,CAPABILITY,a,pc);return;}
+ if(ld){z=loadn(m,base+(u128)off,n,&e);if(e){fault(m,e,base+(u128)off,pc);return;}wr=1;}else{e=storen(m,base+(u128)off,n,sv);if(e){fault(m,e,base+(u128)off,pc);return;}}break;}
 case 0x70:fault(m,SYSCALL,im,next);return;case 0x71:if(m->priv){fault(m,PRIVILEGE,0,pc);return;}m->priv=(unsigned)(m->csr[TPRIV]&1);npc=m->csr[TPC];break;
 case 0x72:if(m->priv){fault(m,PRIVILEGE,0,pc);return;}if(im==CYCLES)W(m->cycles);else if(im<15)W(m->csr[(unsigned)im]);else{fault(m,ILLEGAL,im,pc);return;}break;
 case 0x73:if(m->priv){fault(m,PRIVILEGE,0,pc);return;}if(im>=15||im==PRIV||im==CYCLES){fault(m,ILLEGAL,im,pc);return;}m->csr[(unsigned)im]=a;break;default:fault(m,ILLEGAL,raw,pc);return;}
