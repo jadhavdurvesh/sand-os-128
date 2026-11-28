@@ -98,12 +98,12 @@ def one(src, arrays, cap, flags=True, log=False, quantum=None):
     quanta = []
     if quantum:
         m.dirty = m.touched = 0
-        while not m.halted and m.cycles < 5_000_000:
+        while not m.halted and m.cycles < 30_000_000:
             m.step()
             if m.cycles % quantum == 0:
                 quanta.append((bin(m.dirty).count("1"), bin(m.touched & ~1).count("1"))); m.dirty = m.touched = 0
     else:
-        m.run(5_000_000)
+        m.run(30_000_000)
     assert m.stop_reason == "halt", m.stop_reason
     return m, comp, quanta, len(text.splitlines())
 
