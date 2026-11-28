@@ -82,6 +82,12 @@ def sigil_parse(key, cap):
     return base, perms, shape
 
 
+def sigil_parse_trusted(cap):
+    """Field decode without the MAC check, for registers whose capability was verified (or minted) earlier."""
+    shape = (cap >> 64) & 0xFFFF
+    return cap & ((1 << 64) - 1), (cap >> 80) & 0xFF, shape
+
+
 class Trap(Exception):
     def __init__(self, cause, tval=0, tpc=None):
         self.cause, self.tval, self.tpc = cause, tval, tpc
@@ -98,6 +104,7 @@ class Machine:
         for i in range(len(self.ram)):
             self.ram[i] = 0
         self.v = [0] * isa.NUM_VEYLS
+        self.vok = [False] * isa.NUM_VEYLS      # microarchitectural: register holds a capability whose MAC is already verified
         self.pc = 0
         self.priv = 0
         self.csr = {n: 0 for n in isa.CSRS.values()}
@@ -106,6 +113,11 @@ class Machine:
         self.exit_code = None
         self.stop_reason = None
         self.cycles = 0
+        self.use_vok = True                      # False = verify the MAC on every use (flag-free baseline)
+        self.vok_audit = False                   # True = assert every flag hit is really a valid capability
+        self.cstats = {"uses": 0, "macs": 0}     # capability uses vs MAC computations
+        self.opcount = {}                        # executed Glyphs by mnemonic
+        self.access_log = None                   # optional list of (kind, addr, size) for memory-system models
         self.trace = None
         self._mem_log = []
         self.framebuffer = bytearray(GPU_WIDTH * GPU_HEIGHT * 4)
@@ -151,10 +163,14 @@ class Machine:
 
     def _load(self, addr, size):
         self._check(addr, size, "r")
+        if self.access_log is not None:
+            self.access_log.append(("r", addr, size))
         return int.from_bytes(self.ram[addr:addr + size], "little")
 
     def _store(self, addr, size, value):
         region = self._check(addr, size, "w")
+        if self.access_log is not None:
+            self.access_log.append(("w", addr, size))
         value &= (1 << (size * 8)) - 1
         if region == "console":
             self.console.append(value)
@@ -203,6 +219,26 @@ class Machine:
     def _write(self, rd, value):
         if rd:
             self.v[rd] = value & MASK
+            self.vok[rd] = False
+
+    def _cp(self, rd, value):
+        """Write a capability the machine itself just minted: its MAC is valid by construction."""
+        self._write(rd, value)
+        if rd:
+            self.vok[rd] = self.use_vok
+
+    def _cparse(self, ra, a):
+        """Parse capability register ra, computing the MAC only when the register is not already verified."""
+        self.cstats["uses"] += 1
+        if self.vok[ra] and ra:
+            if self.vok_audit:
+                assert sigil_parse(self.csr[11], a) is not None, f"stale verified flag on v{ra}"
+            return sigil_parse_trusted(a)
+        self.cstats["macs"] += 1
+        p = sigil_parse(self.csr[11], a)
+        if p is not None and ra:
+            self.vok[ra] = self.use_vok
+        return p
 
     def step(self):
         """Execute one glyph. Returns False once the machine has stopped."""
@@ -224,6 +260,7 @@ class Machine:
             name = dec[0]
             self._execute(dec, pc)
             self.cycles += 1
+            self.opcount[name] = self.opcount.get(name, 0) + 1
         except Trap as t:
             trap = t
             if t.tpc is None:
@@ -280,9 +317,9 @@ class Machine:
             shape = (((b >> 8) & 0xFF) << 8) | ((b >> 16) & 0xFF)
             if b >> 24 or (b & 0xFF) & ~SIGIL_PERMS or (shape >> 8) > 56 or a >> 64 or a & ((1 << (shape >> 8)) - 1) or a + sigil_size(shape) > 1 << 64:
                 raise Trap(CAUSE_CAPABILITY, a)
-            self._write(rd, sigil_make(self.csr[11], a, b & 0xFF, shape))
+            self._cp(rd, sigil_make(self.csr[11], a, b & 0xFF, shape))
         elif name == "cnarrow":
-            p = sigil_parse(self.csr[11], a)
+            p = self._cparse(ra, a)
             if p is None:
                 raise Trap(CAUSE_CAPABILITY, a)
             base, perms, shape = p
@@ -291,21 +328,21 @@ class Machine:
             if b >> 88 or perms & SIGIL_SEALED or (np_ & ~perms) or not perms & 4 or ne > (shape >> 8) or off & ((1 << ne) - 1) \
                     or off + sigil_size(nshape) > sigil_size(shape):
                 raise Trap(CAUSE_CAPABILITY, a)
-            self._write(rd, sigil_make(self.csr[11], base + off, np_, nshape))
+            self._cp(rd, sigil_make(self.csr[11], base + off, np_, nshape))
         elif name == "cseal":
-            p = sigil_parse(self.csr[11], a)
+            p = self._cparse(ra, a)
             if p is None:
                 raise Trap(CAUSE_CAPABILITY, a)
-            self._write(rd, sigil_make(self.csr[11], p[0], p[1] | SIGIL_SEALED, p[2]))
+            self._cp(rd, sigil_make(self.csr[11], p[0], p[1] | SIGIL_SEALED, p[2]))
         elif name == "ccall":
-            p = sigil_parse(self.csr[11], a)
+            p = self._cparse(ra, a)
             if p is None or p[1] & (SIGIL_SEALED | SIGIL_GATE) != (SIGIL_SEALED | SIGIL_GATE) or p[0] & 15 or sigil_size(p[2]) < 16 or self.csr[13]:
                 raise Trap(CAUSE_CAPABILITY, a)
-            self._write(rd, sigil_make(self.csr[11], p[0], p[1] & ~(SIGIL_SEALED | SIGIL_GATE), p[2]))
+            self._cp(rd, sigil_make(self.csr[11], p[0], p[1] & ~(SIGIL_SEALED | SIGIL_GATE), p[2]))
             self.csr[13] = nxt
             newpc = p[0]
         elif name == "ccalx":
-            p = sigil_parse(self.csr[11], a)
+            p = self._cparse(ra, a)
             cs = self.csr[14]
             if p is None or p[1] & (SIGIL_SEALED | SIGIL_GATE) != (SIGIL_SEALED | SIGIL_GATE) or p[0] & 15 or sigil_size(p[2]) < 16 or self.csr[13] \
                     or cs == 0 or cs & 15 or cs + 2048 > len(self.ram):
@@ -315,7 +352,8 @@ class Machine:
                 self.ram[cs + 16 * (i - 1):cs + 16 * i] = self.v[i].to_bytes(16, "little")
                 if i > 4:
                     self.v[i] = 0
-            self._write(rd, data)
+                    self.vok[i] = False
+            self._cp(rd, data)
             self.csr[13] = nxt | (1 << 127)
             newpc = p[0]
         elif name == "cretx":
@@ -324,6 +362,7 @@ class Machine:
                 raise Trap(CAUSE_CAPABILITY, 0)
             for i in range(3, 129):                 # v1 and v2 carry the results back; everything else is the caller's again
                 self.v[i] = int.from_bytes(self.ram[cs + 16 * (i - 1):cs + 16 * i], "little")
+                self.vok[i] = False
             newpc, self.csr[13] = self.csr[13] & ((1 << 127) - 1), 0
         elif name == "cretn":
             if not self.csr[13] or self.csr[13] >> 127:
@@ -331,16 +370,16 @@ class Machine:
             newpc, self.csr[13] = self.csr[13], 0
         elif name == "cunseal":
             self._need_kernel()
-            p = sigil_parse(self.csr[11], a)
+            p = self._cparse(ra, a)
             if p is None or not p[1] & SIGIL_SEALED:
                 raise Trap(CAUSE_CAPABILITY, a)
-            self._write(rd, sigil_make(self.csr[11], p[0], p[1] & ~SIGIL_SEALED, p[2]))
+            self._cp(rd, sigil_make(self.csr[11], p[0], p[1] & ~SIGIL_SEALED, p[2]))
         elif name == "cinfo":
-            p = sigil_parse(self.csr[11], a)
+            p = self._cparse(ra, a)
             self._write(rd, 0 if p is None else (1 << 127) | (a & SIGIL_BODY))
         elif name in _CLOADS or name in _CSTORES:
             size = _CLOADS[name] if name in _CLOADS else _CSTORES[name]
-            p = sigil_parse(self.csr[11], a)
+            p = self._cparse(ra, a)
             idx = name in _INDEXED
             off = b if idx else to_signed(simm)
             need = 1 if name in _CLOADS else 2
@@ -386,6 +425,8 @@ class Machine:
             if imm not in self.csr or imm in isa.CSR_READONLY:
                 raise Trap(CAUSE_ILLEGAL, imm)
             self.csr[imm] = a
+            if imm == 11:
+                self.vok = [False] * isa.NUM_VEYLS      # a new key invalidates every cached verification
         else:  # pragma: no cover - decode() only yields table names
             raise Trap(CAUSE_ILLEGAL, 0)
         self.pc = newpc

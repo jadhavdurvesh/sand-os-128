@@ -110,6 +110,25 @@ def run_python(src):
     return m.console.decode(), m.cycles, m.stop_reason
 
 
+def run_flags(src, flags):
+    m = Machine(1 << 20); m.use_vok = flags; m.vok_audit = flags; m.load(asm.assemble(src)); m.run(200000)
+    return m.console.decode(), m.cycles, m.stop_reason, list(m.v), bytes(m.ram[:1 << 16]), dict(m.cstats)
+
+
+class VerifiedFlags(unittest.TestCase):
+    """The verified-register flag is a pure optimisation: architectural results never depend on it."""
+    def test_flags_never_change_behaviour(self):
+        saved = total = 0
+        for seed in range(int(os.environ.get("VEYLITH_FUZZ_N", "150"))):
+            src = program(seed)
+            on, off = run_flags(src, True), run_flags(src, False)
+            self.assertEqual(on[:5], off[:5], f"seed {seed}")
+            self.assertEqual(on[5]["uses"], off[5]["uses"])
+            self.assertLessEqual(on[5]["macs"], off[5]["macs"])
+            saved += off[5]["macs"] - on[5]["macs"]; total += off[5]["uses"]
+        self.assertGreater(saved, 0)
+
+
 @unittest.skipUnless(shutil.which("gcc") or shutil.which("cc"), "no C compiler")
 class Differential(unittest.TestCase):
     N = int(os.environ.get("VEYLITH_FUZZ_N", "150"))
