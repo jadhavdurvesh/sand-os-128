@@ -25,7 +25,11 @@ OVH = "\n".join(f'{short(r["workload"])} & ' + " & ".join(f'{m["sigil_noflags"][
 DIRT = "\n".join(f'{short(r["workload"])} & {r["dirty_mean"]} & {r["dirty_max"]} & {r["touched_mean"]} & {r["touched_max"]}\\\\' for r in cm["rows"])
 cc = json.load(open(os.path.join(root, "docs/paper/compiled.json")))
 COMP = " ".join((f'{short(r["workload"])} & {r["glyphs_raw"]:,} & {r["glyphs_cap"]:,} & {r["cap_uses"]:,} & {r["macs_flags"]} & {m["sigil_noflags"]["8"]:.0f} & {r["dirty_max"]}' + chr(92) * 2).replace(",", chr(92) + ",") for r, m in zip(cc["rows"], cc["model"]))
+LET = " ".join((f'{short(r["workload"])} & {r["cap_uses"]:,} & {r["macs_flags"]:,} & {m["sigil_noflags"]["8"]:.0f} & {m["sigil_flags"]["8"]:.0f} & {m["tagcache_4lines"]["30"]:.1f} & {m["tagcache_64lines"]["30"]:.1f}' + chr(92) * 2).replace(",", chr(92) + ",") for r, m in zip(cm["rows"], cm["model"]))
+LETC = " ".join((f'{short(r["workload"])} & {r["cap_uses"]:,} & {r["macs_flags"]} & {m["sigil_noflags"]["8"]:.0f} & {r["dirty_max"]}' + chr(92) * 2).replace(",", chr(92) + ",") for r, m in zip(cc["rows"], cc["model"]))
 with open(os.path.join(root, "docs/paper/numbers.tex"), "w") as f:
+    f.write("\\newcommand{\\LetCompRows}{" + LETC + "}\n")
+    f.write("\\newcommand{\\LetRows}{" + LET + "}\n")
     f.write("\\newcommand{\\CompRows}{" + COMP.replace("\\n", " ") + "}\n")
     f.write("\\newcommand{\\CycRows}{" + CYC.replace("\n", " ") + "}\n")
     f.write("\\newcommand{\\OvhRows}{" + OVH.replace("\n", " ") + "}\n")

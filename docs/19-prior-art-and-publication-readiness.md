@@ -48,3 +48,7 @@ A 16-element sorting network (63 compare-exchanges, constant indices) sorts corr
 3. Add an indexed capability access Glyph and re-run the workload.
 4. Build a small cycle model (even a simple in-order pipeline with a parameterised MAC latency) and run both Sigil and a CHERI-style tag model on it.
 5. Then target a workshop or short-paper track.
+
+## Submission plan (Nov 2026)
+Target: **IEEE Computer Architecture Letters** — scope is any architecture topic including analysis of unsuccessful techniques; limit is **four pages including figures, tables and references** (longer submissions are returned without review), per the journal's call for papers. `docs/paper/sigil-letter.tex` is a 2-page letter version built with article/twocolumn because IEEEtran was unavailable offline; move it into the IEEE template (Template Selector) and re-check the page count. The full 9-page paper (`veylith-128.tex`) is the long version for a venue without a page limit (e.g. an arXiv preprint first, then a journal such as TACO or a workshop). Before submitting: send the rv128 letter author list (not retrievable here), read the C3 paper in full, re-run `tools/*` to refresh numbers, and have someone else read it.
+Honest odds: this is an emulation study with parametric latencies; reviewers will ask for a real timing flow and bigger workloads. Treat the letter as the submission most likely to be judged on its own terms.
