@@ -157,6 +157,7 @@ WORKLOADS = {
     "hash table (192 keys / 256 slots)": (hash_table, 6, lambda m, p: m.v[26] == 192 * p),
     "byte checksum (2 KiB)": (byte_checksum, 4, lambda m, p: check_checksum(m)),
     "linked list (cap in node)": (list_walk, 40, lambda m, p: m.v[15] == p * 8256),
+    "large list (16384 nodes, 512 KiB)": (lambda cap, p: list_walk(cap, p, 16384), 2, lambda m, p: m.v[15] == p * (16384 * 16385 // 2)),
 }
 
 
@@ -207,7 +208,7 @@ def study(quantum=3000):
         d = [q[0] for q in quanta] or [0]; t = [q[1] for q in quanta] or [0]
         rows.append({"workload": name, "glyphs_raw": raw.cycles, "glyphs_cap": cap_on.cycles, "cap_uses": uses, "macs_flags": macs_on,
                      "macs_noflags": macs_off, "data_accesses": len(log), "footprint_bytes": len({a // 16 for _, a, _ in log}) * 16,
-                     "tag_misses": {str(s): tag_misses(log, s) for s in (1, 2, 4)},
+                     "tag_misses": {str(s): tag_misses(log, s) for s in (1, 2, 4, 16, 64)},
                      "quanta": len(quanta), "dirty_mean": round(sum(d) / len(d), 1), "dirty_max": max(d),
                      "touched_mean": round(sum(t) / len(t), 1), "touched_max": max(t)})
     return rows
@@ -222,6 +223,7 @@ def model(rows, Ls=(1, 2, 4, 8, 12), Ms=(10, 30, 100)):
                     "sigil_flags": {str(L): round(100 * L * r["macs_flags"] / g, 2) for L in Ls},
                     "sigil_noflags": {str(L): round(100 * L * r["macs_noflags"] / g, 2) for L in Ls},
                     "tagcache_4lines": {str(M): round(100 * M * r["tag_misses"]["4"] / g, 2) for M in Ms},
+                    "tagcache_64lines": {str(M): round(100 * M * r["tag_misses"]["64"] / g, 2) for M in Ms},
                     "tagcache_1line": {str(M): round(100 * M * r["tag_misses"]["1"] / g, 2) for M in Ms}})
     return out
 
