@@ -23,7 +23,10 @@ def short(n): return n.split(" (")[0]
 CYC = "\n".join(f'{short(r["workload"])} & {r["glyphs_raw"]:,} & {r["glyphs_cap"]:,} & {r["cap_uses"]:,} & {r["macs_flags"]:,} & {100 * (1 - r["macs_flags"] / r["macs_noflags"]):.0f}\\%\\\\'.replace(",", "\\,") for r in cm["rows"])
 OVH = "\n".join(f'{short(r["workload"])} & ' + " & ".join(f'{m["sigil_noflags"][L]:.1f} & {m["sigil_flags"][L]:.1f}' for L in ("2", "8")) + f' & {m["tagcache_4lines"]["30"]:.2f} & {m["tagcache_64lines"]["30"]:.2f}\\\\' for r, m in zip(cm["rows"], cm["model"]))
 DIRT = "\n".join(f'{short(r["workload"])} & {r["dirty_mean"]} & {r["dirty_max"]} & {r["touched_mean"]} & {r["touched_max"]}\\\\' for r in cm["rows"])
+cc = json.load(open(os.path.join(root, "docs/paper/compiled.json")))
+COMP = " ".join((f'{short(r["workload"])} & {r["glyphs_raw"]:,} & {r["glyphs_cap"]:,} & {r["cap_uses"]:,} & {r["macs_flags"]} & {m["sigil_noflags"]["8"]:.0f} & {r["dirty_max"]}' + chr(92) * 2).replace(",", chr(92) + ",") for r, m in zip(cc["rows"], cc["model"]))
 with open(os.path.join(root, "docs/paper/numbers.tex"), "w") as f:
+    f.write("\\newcommand{\\CompRows}{" + COMP.replace("\\n", " ") + "}\n")
     f.write("\\newcommand{\\CycRows}{" + CYC.replace("\n", " ") + "}\n")
     f.write("\\newcommand{\\OvhRows}{" + OVH.replace("\n", " ") + "}\n")
     f.write("\\newcommand{\\DirtRows}{" + DIRT.replace("\n", " ") + "}\n")
