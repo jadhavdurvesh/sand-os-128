@@ -68,7 +68,9 @@ jobs:
           python --version
           python -c "from veylith import isa; print('Architecture: SAND-128 / Veylith 128-Native v1'); print(f'Registers: {isa.NUM_GPRS} x {isa.WIDTH}-bit'); print(f'Glyph width: {isa.GLYPH_BYTES * 8} bits'); print(f'Virtual address width: {isa.VA_BITS} bits')"
       - name: Run unit and integration tests
-        run: python -W error -m unittest discover -s tests -v
+        run: |
+          python -m pip install --quiet yowasp-yosys
+          python -W error -m unittest discover -s tests -v
       - name: Verify opcode table is reproducible
         run: python -m veylith opcodes > /tmp/veylith-opcodes.json && diff -u architecture/veylith-v0-glyphs.json /tmp/veylith-opcodes.json
 

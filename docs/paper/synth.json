@@ -1,0 +1,45 @@
+{
+ "rtl_vectors_verified": 8,
+ "sipround": {
+  "depth_levels": 41,
+  "cells": 2136,
+  "by_type": {
+   "$_AND_": 916,
+   "$_OR_": 456,
+   "$_XOR_": 764
+  }
+ },
+ "sipmac_unrolled": {
+  "depth_levels": 269,
+  "cells": 17380,
+  "by_type": {
+   "$_AND_": 7310,
+   "$_NOT_": 104,
+   "$_OR_": 3630,
+   "$_XOR_": 6336
+  }
+ },
+ "rounds": 8,
+ "cycles_by_gate_levels_per_cycle": {
+  "8": {
+   "unrolled": 34,
+   "iterative_8_rounds": 48
+  },
+  "12": {
+   "unrolled": 23,
+   "iterative_8_rounds": 32
+  },
+  "16": {
+   "unrolled": 17,
+   "iterative_8_rounds": 24
+  },
+  "24": {
+   "unrolled": 12,
+   "iterative_8_rounds": 16
+  },
+  "32": {
+   "unrolled": 9,
+   "iterative_8_rounds": 16
+  }
+ }
+}

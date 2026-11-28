@@ -334,6 +334,13 @@ class Compiler(unittest.TestCase):
         sys.path.insert(0,os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),"tools"))
         import vcc
         with self.assertRaises(NotImplementedError): vcc.compile_program("x = f(1)\n",{},False)
+class MacRtl(unittest.TestCase):
+    def test_verilog_mac_matches_python(self):
+        import shutil,sys
+        if not shutil.which("yowasp-yosys"): self.skipTest("yowasp-yosys not installed")
+        sys.path.insert(0,os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),"tools"))
+        import synth_mac
+        self.assertEqual(synth_mac.verify(3,seed=5),3)
 class Fragmentation(unittest.TestCase):
     def test_rounding_and_buddy(self):
         import sys
