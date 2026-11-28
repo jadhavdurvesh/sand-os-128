@@ -39,7 +39,7 @@ A 16-element sorting network (63 compare-exchanges, constant indices) sorts corr
 | Threat model and forgery analysis | Paper has a basic one; no attack experiments, no key management, no side channels |
 | Realistic workloads | One micro-workload; no compiler, no indexed capability access |
 | Hardware or cycle-accurate model of MAC latency | **Missing** |
-| Reference verification (authors, years, venues) | Several entries flagged "to be confirmed" in the bibliography |
+| Reference verification (authors, years, venues) | Verified in Nov 2026: C3 authors, CHERI domain-crossing (IEEE Micro 36(5), 2016), CCS 2023 sealed-pointer title and authors, rv128 venue (IEEE CAL 22(2), 2023). Still open: authors of the rv128 letter (not retrievable here; omitted, not guessed). C3 paper details beyond its metadata remain unread |
 
 ## Suggested path
 
