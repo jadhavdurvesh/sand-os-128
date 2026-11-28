@@ -341,6 +341,17 @@ class MacRtl(unittest.TestCase):
         sys.path.insert(0,os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),"tools"))
         import synth_mac
         self.assertEqual(synth_mac.verify(3,seed=5),3)
+class MacroBench(unittest.TestCase):
+    def test_bst_with_capability_links_and_bfs_match_reference(self):
+        import sys
+        sys.path.insert(0,os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),"tools"))
+        import macro_bench as mb, compiled_study as cs
+        raw,_=mb.run_bst(False); on,_=mb.run_bst(True,True); off,_=mb.run_bst(True,False)
+        self.assertEqual((raw.v[26],on.v[26],off.v[26]),(on.v[26],)*3)
+        self.assertEqual(on.cycles,off.cycles); self.assertGreater(on.cstats["macs"],on.cstats["uses"]//3); self.assertLess(on.cstats["macs"],off.cstats["macs"])
+        name="breadth-first search (1024 nodes, 4096 edges)"; src,arrays=mb.PROGRAMS[name]
+        for cap in (False,True):
+            m,comp,_,_=cs.one(src,arrays,cap); cs.check(m,comp,src,arrays)
 class Fragmentation(unittest.TestCase):
     def test_rounding_and_buddy(self):
         import sys

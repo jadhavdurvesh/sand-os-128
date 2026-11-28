@@ -1,0 +1,330 @@
+{
+ "rows": [
+  {
+   "workload": "merge sort (2048)",
+   "glyphs_raw": 742938,
+   "glyphs_cap": 632903,
+   "cap_uses": 110039,
+   "macs_flags": 0,
+   "macs_noflags": 110039,
+   "data_accesses": 110039,
+   "footprint_bytes": 65536,
+   "tag_misses": {
+    "1": 94205,
+    "2": 12440,
+    "4": 175,
+    "16": 8,
+    "64": 8
+   },
+   "quanta": 247,
+   "dirty_mean": 7.6,
+   "dirty_max": 15
+  },
+  {
+   "workload": "sparse mat-vec, CSR (512 rows, 4096 nnz, x4)",
+   "glyphs_raw": 301105,
+   "glyphs_cap": 245819,
+   "cap_uses": 55296,
+   "macs_flags": 0,
+   "macs_noflags": 55296,
+   "data_accesses": 55296,
+   "footprint_bytes": 155664,
+   "tag_misses": {
+    "1": 53132,
+    "2": 53020,
+    "4": 10025,
+    "16": 73,
+    "64": 20
+   },
+   "quanta": 100,
+   "dirty_mean": 6.2,
+   "dirty_max": 15
+  },
+  {
+   "workload": "breadth-first search (1024 nodes, 4096 edges)",
+   "glyphs_raw": 92285,
+   "glyphs_cap": 77088,
+   "cap_uses": 15205,
+   "macs_flags": 0,
+   "macs_noflags": 15205,
+   "data_accesses": 15205,
+   "footprint_bytes": 113824,
+   "tag_misses": {
+    "1": 11966,
+    "2": 8089,
+    "4": 4505,
+    "16": 15,
+    "64": 15
+   },
+   "quanta": 30,
+   "dirty_mean": 7.9,
+   "dirty_max": 9
+  },
+  {
+   "workload": "longest common subsequence (96 x 96)",
+   "glyphs_raw": 355562,
+   "glyphs_cap": 311784,
+   "cap_uses": 43784,
+   "macs_flags": 0,
+   "macs_noflags": 43784,
+   "data_accesses": 43784,
+   "footprint_bytes": 152992,
+   "tag_misses": {
+    "1": 19630,
+    "2": 4899,
+    "4": 19,
+    "16": 19,
+    "64": 19
+   },
+   "quanta": 118,
+   "dirty_mean": 6.7,
+   "dirty_max": 12
+  },
+  {
+   "workload": "3-point stencil (4096 cells, 6 sweeps)",
+   "glyphs_raw": 859834,
+   "glyphs_cap": 712454,
+   "cap_uses": 147384,
+   "macs_flags": 0,
+   "macs_noflags": 147384,
+   "data_accesses": 147384,
+   "footprint_bytes": 131040,
+   "tag_misses": {
+    "1": 98340,
+    "2": 318,
+    "4": 192,
+    "16": 16,
+    "64": 16
+   },
+   "quanta": 286,
+   "dirty_mean": 3.8,
+   "dirty_max": 10
+  },
+  {
+   "workload": "binary search tree (4096 nodes, capability links)",
+   "glyphs_raw": 387895,
+   "glyphs_cap": 383799,
+   "cap_uses": 122468,
+   "macs_flags": 60210,
+   "macs_noflags": 122468,
+   "data_accesses": 122468,
+   "footprint_bytes": 188496,
+   "tag_misses": {
+    "1": 26357,
+    "2": 26185,
+    "4": 24682,
+    "16": 3710,
+    "64": 32
+   },
+   "quanta": 129,
+   "dirty_mean": 8.1,
+   "dirty_max": 15
+  }
+ ],
+ "model": [
+  {
+   "workload": "merge sort (2048)",
+   "sigil_flags": {
+    "1": 0.0,
+    "2": 0.0,
+    "4": 0.0,
+    "8": 0.0,
+    "12": 0.0,
+    "16": 0.0
+   },
+   "sigil_noflags": {
+    "1": 17.39,
+    "2": 34.77,
+    "4": 69.55,
+    "8": 139.09,
+    "12": 208.64,
+    "16": 278.18
+   },
+   "tagcache_4lines": {
+    "10": 0.28,
+    "30": 0.83,
+    "100": 2.77
+   },
+   "tagcache_64lines": {
+    "10": 0.01,
+    "30": 0.04,
+    "100": 0.13
+   },
+   "tagcache_1line": {
+    "10": 148.85,
+    "30": 446.54,
+    "100": 1488.46
+   }
+  },
+  {
+   "workload": "sparse mat-vec, CSR (512 rows, 4096 nnz, x4)",
+   "sigil_flags": {
+    "1": 0.0,
+    "2": 0.0,
+    "4": 0.0,
+    "8": 0.0,
+    "12": 0.0,
+    "16": 0.0
+   },
+   "sigil_noflags": {
+    "1": 22.49,
+    "2": 44.99,
+    "4": 89.98,
+    "8": 179.96,
+    "12": 269.94,
+    "16": 359.91
+   },
+   "tagcache_4lines": {
+    "10": 40.78,
+    "30": 122.35,
+    "100": 407.82
+   },
+   "tagcache_64lines": {
+    "10": 0.08,
+    "30": 0.24,
+    "100": 0.81
+   },
+   "tagcache_1line": {
+    "10": 216.14,
+    "30": 648.43,
+    "100": 2161.43
+   }
+  },
+  {
+   "workload": "breadth-first search (1024 nodes, 4096 edges)",
+   "sigil_flags": {
+    "1": 0.0,
+    "2": 0.0,
+    "4": 0.0,
+    "8": 0.0,
+    "12": 0.0,
+    "16": 0.0
+   },
+   "sigil_noflags": {
+    "1": 19.72,
+    "2": 39.45,
+    "4": 78.9,
+    "8": 157.79,
+    "12": 236.69,
+    "16": 315.59
+   },
+   "tagcache_4lines": {
+    "10": 58.44,
+    "30": 175.32,
+    "100": 584.4
+   },
+   "tagcache_64lines": {
+    "10": 0.19,
+    "30": 0.58,
+    "100": 1.95
+   },
+   "tagcache_1line": {
+    "10": 155.23,
+    "30": 465.68,
+    "100": 1552.25
+   }
+  },
+  {
+   "workload": "longest common subsequence (96 x 96)",
+   "sigil_flags": {
+    "1": 0.0,
+    "2": 0.0,
+    "4": 0.0,
+    "8": 0.0,
+    "12": 0.0,
+    "16": 0.0
+   },
+   "sigil_noflags": {
+    "1": 14.04,
+    "2": 28.09,
+    "4": 56.17,
+    "8": 112.34,
+    "12": 168.52,
+    "16": 224.69
+   },
+   "tagcache_4lines": {
+    "10": 0.06,
+    "30": 0.18,
+    "100": 0.61
+   },
+   "tagcache_64lines": {
+    "10": 0.06,
+    "30": 0.18,
+    "100": 0.61
+   },
+   "tagcache_1line": {
+    "10": 62.96,
+    "30": 188.88,
+    "100": 629.6
+   }
+  },
+  {
+   "workload": "3-point stencil (4096 cells, 6 sweeps)",
+   "sigil_flags": {
+    "1": 0.0,
+    "2": 0.0,
+    "4": 0.0,
+    "8": 0.0,
+    "12": 0.0,
+    "16": 0.0
+   },
+   "sigil_noflags": {
+    "1": 20.69,
+    "2": 41.37,
+    "4": 82.75,
+    "8": 165.49,
+    "12": 248.24,
+    "16": 330.99
+   },
+   "tagcache_4lines": {
+    "10": 0.27,
+    "30": 0.81,
+    "100": 2.69
+   },
+   "tagcache_64lines": {
+    "10": 0.02,
+    "30": 0.07,
+    "100": 0.22
+   },
+   "tagcache_1line": {
+    "10": 138.03,
+    "30": 414.09,
+    "100": 1380.3
+   }
+  },
+  {
+   "workload": "binary search tree (4096 nodes, capability links)",
+   "sigil_flags": {
+    "1": 15.69,
+    "2": 31.38,
+    "4": 62.75,
+    "8": 125.5,
+    "12": 188.25,
+    "16": 251.01
+   },
+   "sigil_noflags": {
+    "1": 31.91,
+    "2": 63.82,
+    "4": 127.64,
+    "8": 255.28,
+    "12": 382.91,
+    "16": 510.55
+   },
+   "tagcache_4lines": {
+    "10": 64.31,
+    "30": 192.93,
+    "100": 643.1
+   },
+   "tagcache_64lines": {
+    "10": 0.08,
+    "30": 0.25,
+    "100": 0.83
+   },
+   "tagcache_1line": {
+    "10": 68.67,
+    "30": 206.02,
+    "100": 686.74
+   }
+  }
+ ]
+}

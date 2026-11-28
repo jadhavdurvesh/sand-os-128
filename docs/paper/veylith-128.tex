@@ -9,7 +9,7 @@
 \usepackage[hidelinks]{hyperref}
 \input{numbers.tex}
 \title{Veylith and Sigil: A Clean-Sheet 128-Bit Machine\\with Tag-Free, MAC-Authenticated Capabilities,\\Specified, Implemented Twice, and Measured}
-\author{Durvesh Jadhav\\Independent researcher\\ORCID 0009-0003-3779-2857}
+\author{Durvesh M. Jadhav\\Independent researcher\\ORCID 0009-0003-3779-2857}
 \date{Draft of November 2026 --- software-emulated architecture; no silicon}
 \begin{document}
 \maketitle
@@ -134,6 +134,16 @@ Program & Glyphs raw & Glyphs cap. & Cap.\ uses & MACs, flag & Slowdown \% no fl
 \end{tabular}
 \caption{Compiler-generated programs. With one capability per array, held in a register for the whole run, the flag eliminates all MACs after minting. Because the compiler never spills a capability to memory, this says nothing about code that stores capabilities in data structures; the linked-list workloads above are the evidence for that case.}
 \end{table}
+\paragraph{Larger benchmarks.} Six further benchmarks (\texttt{tools/macro\_bench.py}) have footprints of 64--184\,KiB and $10^5$--$10^6$ retired instructions: merge sort, a CSR sparse matrix-vector product, breadth-first search, longest-common-subsequence dynamic programming and a stencil sweep, all compiled by the toy compiler, and a binary search tree whose child links are capabilities, built on the host and probed by 4096 lookups. All results equal ordinary Python execution.
+\begin{table}[h]\centering\small
+\begin{tabular}{@{}lrrrrrrrr@{}}\toprule
+ & Foot- & Cap.\ & MACs & \multicolumn{2}{c}{Slowdown \%, $L=8$} & \multicolumn{3}{c}{Tag cache \% (lines)}\\
+Benchmark & print KiB & uses & w/ bit & no bit & bit & 4 & 16 & 64\\\midrule
+\MacroRows\bottomrule
+\end{tabular}
+\caption{Larger benchmarks; tag-cache columns use a 30-cycle miss and 8\,KiB of data per 64-byte tag line.}
+\end{table}
+The five array benchmarks again need no MAC check with the flag. The tree does: 60\,210 of 122\,468 capability uses need a MAC even with the flag, a modelled 126\% slowdown at $L=8$ (against 255\% without). Irregular access also stresses a tag cache: SpMV and BFS cost 122\% and 175\% with four tag lines, but 0.2--0.9\% with 16 or 64, and the tree needs 64 lines (0.3\%; 16 lines cost 29\%). A 64-line tag cache is 4\,KiB of storage, so on pointer-rich code a modest tag cache beats an 8-cycle MAC on these benchmarks. The case for MAC capabilities then rests on simplicity, memory layout and compatibility, or on a MAC latency far below our gate-depth estimate or hidden by pipelining; it does not rest on cycles.
 \paragraph{Register-file state per quantum.} Instrumenting the machine to record which registers are written (or named) in each 3000-Glyph quantum gives Table 3. At most 16 of 128 registers are written in any quantum of these programs, so a hardware dirty mask would avoid between 87\% (worst quantum) and 96\% (best mean) of the register words moved on a context switch, if programs resemble these. They are small, hand-written kernels; a compiler-generated program with many live values would dirty more.
 \begin{table}[h]\centering\small
 \begin{tabular}{@{}lrrrr@{}}\toprule
@@ -149,7 +159,7 @@ Workload & written, mean & written, max & named, mean & named, max\\\midrule
 \item[Virtual memory.] Only aperture protection exists. A 128-bit address with 128-bit page-table entries would leave tens of spare bits per entry for capabilities, tags or permission domains, but the number of translation levels needed for a sparse 128-bit space (or an alternative such as hashed or segmented translation) is an open design question. \emph{Not implemented.}
 \item[Context-switch cost.] Section~\ref{sec:amortize} measures how few registers a quantum dirties; proposals still to build and evaluate: a dirty-register mask maintained by hardware, banked register windows, or block-move Glyphs that transfer several quads per instruction. Each must be modelled for its effect on the (so far unmodelled) microarchitecture.
 \item[Code density.] A 16-byte Glyph is simple to decode and carries an 88-bit immediate, but most immediates are small. Density against a compressed encoding has not been measured on real programs.
-\item[Pointer and data footprint.] 128-bit pointers double the footprint of pointer-heavy structures relative to 64 bits. Only six small hand-written workloads and six toy-compiled programs exist; one workload has a large footprint (512\,KiB), and there is no optimising compiler or real application.
+\item[Pointer and data footprint.] 128-bit pointers double the footprint of pointer-heavy structures relative to 64 bits. Eighteen workloads exist (six hand-written, eleven toy-compiled, one capability tree) with footprints up to 512\,KiB; there is no optimising compiler, capability-aware allocator or real application.
 \item[Atomics, multi-core, memory model.] Single core, deterministic, no atomics. A 128-bit compare-and-swap is natural; its memory-model consequences are untreated.
 \item[Floating point and vectors; numerical systems.] None implemented. The repository's numerical-systems programme (base-60, balanced ternary, residue systems) is a research plan, not a result.
 \item[Device interrupts and I/O.] One interrupt source. The console and framebuffer are memory-mapped windows in the top of the address space.

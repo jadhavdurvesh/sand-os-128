@@ -27,7 +27,11 @@ cc = json.load(open(os.path.join(root, "docs/paper/compiled.json")))
 COMP = " ".join((f'{short(r["workload"])} & {r["glyphs_raw"]:,} & {r["glyphs_cap"]:,} & {r["cap_uses"]:,} & {r["macs_flags"]} & {m["sigil_noflags"]["8"]:.0f} & {r["dirty_max"]}' + chr(92) * 2).replace(",", chr(92) + ",") for r, m in zip(cc["rows"], cc["model"]))
 LET = " ".join((f'{short(r["workload"])} & {r["cap_uses"]:,} & {r["macs_flags"]:,} & {m["sigil_noflags"]["8"]:.0f} & {m["sigil_flags"]["8"]:.0f} & {m["tagcache_4lines"]["30"]:.1f} & {m["tagcache_64lines"]["30"]:.1f}' + chr(92) * 2).replace(",", chr(92) + ",") for r, m in zip(cm["rows"], cm["model"]))
 LETC = " ".join((f'{short(r["workload"])} & {r["cap_uses"]:,} & {r["macs_flags"]} & {m["sigil_noflags"]["8"]:.0f} & {r["dirty_max"]}' + chr(92) * 2).replace(",", chr(92) + ",") for r, m in zip(cc["rows"], cc["model"]))
+mc = json.load(open(os.path.join(root, "docs/paper/macro.json")))
+def nm(n): return n.replace("breadth-first search", "BFS").replace("longest common subsequence", "LCS").replace("sparse mat-vec, CSR", "SpMV (CSR)").replace("binary search tree", "BST").replace("3-point stencil", "stencil").split(" (")[0]
+MAC = " ".join((f'{nm(r["workload"])} & {r["footprint_bytes"] // 1024} & {r["cap_uses"]:,} & {r["macs_flags"]:,} & {m["sigil_noflags"]["8"]:.0f} & {m["sigil_flags"]["8"]:.0f} & {100 * 30 * r["tag_misses"]["4"] / r["glyphs_cap"]:.1f} & {100 * 30 * r["tag_misses"]["16"] / r["glyphs_cap"]:.1f} & {100 * 30 * r["tag_misses"]["64"] / r["glyphs_cap"]:.1f}' + chr(92) * 2).replace(",", chr(92) + ",") for r, m in zip(mc["rows"], mc["model"]))
 with open(os.path.join(root, "docs/paper/numbers.tex"), "w") as f:
+    f.write("\\newcommand{\\MacroRows}{" + MAC + "}\n")
     f.write("\\newcommand{\\LetCompRows}{" + LETC + "}\n")
     f.write("\\newcommand{\\LetRows}{" + LET + "}\n")
     f.write("\\newcommand{\\CompRows}{" + COMP.replace("\\n", " ") + "}\n")
