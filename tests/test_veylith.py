@@ -153,6 +153,15 @@ class Sigil(unittest.TestCase):
     def test_load_store_through_a_capability(self):
         m=run(self.KEY+self.MINT+"li v6, 0x1122334455667788AABBCCDDEEFF0011\ncsq [v4 + 16], v6\nclq v7, [v4 + 16]\nli v8, 0xAB\ncsb [v4 + 5], v8\nclb v9, [v4 + 5]\nlb v10, [v2 + 5]\nlq v11, [v2 + 16]\nhalt")
         self.assertEqual((m.v[7],m.v[9],m.v[10],m.v[11]),(0x1122334455667788AABBCCDDEEFF0011,0xAB,0xAB,0x1122334455667788AABBCCDDEEFF0011))
+    def test_indexed_load_store(self):
+        m=run(self.KEY+self.MINT+"li v6, 0x0123456789ABCDEF0011223344556677\nli v12, 48\ncsqx v6, v4, v12\nclqx v7, v4, v12\nli v8, 0xCD\nli v12, 5\ncsbx v8, v4, v12\nclbx v9, v4, v12\nlb v10, [v2 + 5]\nlq v11, [v2 + 48]\nhalt")
+        self.assertEqual((m.v[7],m.v[9],m.v[10],m.v[11]),(0x0123456789ABCDEF0011223344556677,0xCD,0xCD,0x0123456789ABCDEF0011223344556677))
+    def test_indexed_bounds_trap(self):
+        for idx in ("128","121","-1"):
+            for op in ("clbx v7, v4, v12","clqx v7, v4, v12","csbx v7, v4, v12","csqx v7, v4, v12"):
+                src=self.KEY+self.MINT+f"li v12, {idx}\n{op}"
+                if idx=="128" or op[2]=="q" and idx=="121" or idx=="-1":
+                    self.assertEqual(trap(src)[0],isa.CAUSE_CAPABILITY,(idx,op))
     def test_bounds_permissions_and_forgery_trap(self):
         for src in ("clq v7, [v4 + 128]","clq v7, [v4 + 120]","clb v7, [v4 + -1]","clb v7, [v4 + 128]","csb [v4 + 128], v0","li v6, 1\ncsb [v6 + 0], v0",
                     "li v5, 0x9000\nclb v7, [v5 + 0]"):

@@ -341,14 +341,15 @@ class Machine:
         elif name in _CLOADS or name in _CSTORES:
             size = _CLOADS[name] if name in _CLOADS else _CSTORES[name]
             p = sigil_parse(self.csr[11], a)
-            off = to_signed(simm)
+            idx = name in _INDEXED
+            off = b if idx else to_signed(simm)
             need = 1 if name in _CLOADS else 2
             if p is None or p[1] & SIGIL_SEALED or not p[1] & need or off < 0 or off + size > sigil_size(p[2]):
                 raise Trap(CAUSE_CAPABILITY, a)
             if name in _CLOADS:
                 self._write(rd, self._load(p[0] + off, size))
             else:
-                self._store(p[0] + off, size, b)
+                self._store(p[0] + off, size, v[rd] if idx else b)
         elif name in _LOADS or name in _STORES:
             if self.priv == 1 and self.csr[12]:
                 raise Trap(CAUSE_CAPABILITY, (a + simm) & MASK)       # capability mode: raw memory access is forbidden
@@ -453,8 +454,9 @@ _ALUI = {
 }
 _LOADS = {"lb": (1, 0), "lh": (2, 0), "lw": (4, 0), "ld": (8, 0), "lq": (16, 0),
           "lbs": (1, 1), "lhs": (2, 1), "lws": (4, 1), "lds": (8, 1)}
-_CLOADS = {"clb": 1, "clq": 16}
-_CSTORES = {"csb": 1, "csq": 16}
+_CLOADS = {"clb": 1, "clq": 16, "clbx": 1, "clqx": 16}
+_CSTORES = {"csb": 1, "csq": 16, "csbx": 1, "csqx": 16}
+_INDEXED = {"clbx", "clqx", "csbx", "csqx"}
 _STORES = {"sb": 1, "sh": 2, "sw": 4, "sd": 8, "sq": 16}
 _BRANCH = {"beq": lambda a, b: a == b, "bne": lambda a, b: a != b,
            "blt": lambda a, b: to_signed(a) < to_signed(b), "bge": lambda a, b: to_signed(a) >= to_signed(b),

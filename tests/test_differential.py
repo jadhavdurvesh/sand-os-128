@@ -53,6 +53,10 @@ def program(seed, length=220):
                 L.append(f"{rng.choice(['cseal', 'cunseal'])} {rng.choice([cr(), reg()])}, {rng.choice([cr(), reg()])}")
             elif j < 0.45:
                 L.append(f"cinfo {reg()}, {rng.choice([cr(), reg()])}")
+            elif j < 0.55:
+                L.append(f"li v13, {rng.choice([rng.randrange(0, 280), -1, 1 << 100])}")
+                op = rng.choice(["clbx", "clqx", "csbx", "csqx"])
+                L.append(f"{op} {reg()}, {cr()}, v13")
             elif j < 0.8:
                 op = rng.choice(["clb", "clq"]); w = 1 if op == "clb" else 16
                 L.append(f"{op} {reg()}, [{cr()} + {rng.choice([rng.randrange(0, 280, w), -w, 260])}]")
