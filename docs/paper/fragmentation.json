@@ -1,7 +1,7 @@
 {
  "python_json_re_decimal": {
   "allocations": 1429975,
-  "bytes_requested": 479462125,
+  "bytes_requested": 479462148,
   "median_size": 46,
   "internal_fragmentation_percent_by_mantissa_bits": {
    "0": 78.02,
@@ -11,72 +11,77 @@
    "6": 1.59,
    "8": 1.56
   },
-  "peak_live_bytes": 27483718,
+  "implemented_length_multiplier_internal_fragmentation_percent": 0.17,
+  "peak_live_bytes": 27483541,
   "buddy_peak_span_bytes": 44050880,
   "buddy_peak_overhead_percent": 60.3
  },
  "gcc_compile_veylith_vm": {
-  "allocations": 220101,
-  "bytes_requested": 180203903,
-  "median_size": 76,
+  "allocations": 224755,
+  "bytes_requested": 182690010,
+  "median_size": 72,
   "internal_fragmentation_percent_by_mantissa_bits": {
-   "0": 20.11,
-   "1": 9.38,
-   "2": 4.37,
-   "4": 1.81,
+   "0": 20.47,
+   "1": 9.64,
+   "2": 4.48,
+   "4": 1.83,
    "6": 0.81,
-   "8": 0.57
+   "8": 0.58
   },
-  "peak_live_bytes": 7316904,
+  "implemented_length_multiplier_internal_fragmentation_percent": 0.077,
+  "peak_live_bytes": 7261868,
   "buddy_peak_span_bytes": 14680064,
-  "buddy_peak_overhead_percent": 100.6
+  "buddy_peak_overhead_percent": 102.2
  },
  "tar_gzip_repo": {
-  "allocations": 5900,
-  "bytes_requested": 6591999,
+  "allocations": 6098,
+  "bytes_requested": 6926259,
   "median_size": 22,
   "internal_fragmentation_percent_by_mantissa_bits": {
-   "0": 96.18,
-   "1": 48.28,
-   "2": 24.38,
+   "0": 96.29,
+   "1": 48.34,
+   "2": 24.41,
    "4": 6.5,
-   "6": 2.04,
+   "6": 2.03,
    "8": 0.92
   },
-  "peak_live_bytes": 374601,
+  "implemented_length_multiplier_internal_fragmentation_percent": 0.605,
+  "peak_live_bytes": 374674,
   "buddy_peak_span_bytes": 786432,
   "buddy_peak_overhead_percent": 109.9
  },
  "sort_and_uniq": {
   "allocations": 2692,
-  "bytes_requested": 18134413,
+  "bytes_requested": 18134481,
   "median_size": 32,
   "internal_fragmentation_percent_by_mantissa_bits": {
    "0": 94.26,
-   "1": 46.43,
+   "1": 46.42,
    "2": 22.52,
    "4": 4.6,
    "6": 1.57,
    "8": 0.46
   },
-  "peak_live_bytes": 17529872,
-  "buddy_peak_span_bytes": 67117056,
+  "implemented_length_multiplier_internal_fragmentation_percent": 0.745,
+  "peak_live_bytes": 17529923,
+  "buddy_peak_span_bytes": 67129344,
   "buddy_peak_overhead_percent": 282.9
  },
  "git_log_and_diff": {
-  "allocations": 18031,
-  "bytes_requested": 79095409,
-  "median_size": 114,
+  "allocations": 18652,
+  "bytes_requested": 83440334,
+  "median_size": 115,
   "internal_fragmentation_percent_by_mantissa_bits": {
-   "0": 51.68,
-   "1": 17.9,
-   "2": 14.58,
+   "0": 52.04,
+   "1": 18.14,
+   "2": 14.64,
    "4": 2.21,
    "6": 0.87,
    "8": 0.13
   },
-  "peak_live_bytes": 3468115,
+  "implemented_length_multiplier_internal_fragmentation_percent": 0.274,
+  "peak_live_bytes": 3470232,
   "buddy_peak_span_bytes": 6291456,
-  "buddy_peak_overhead_percent": 81.4
+  "buddy_peak_overhead_percent": 81.3
  }
 }

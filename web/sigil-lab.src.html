@@ -106,8 +106,8 @@ function sip(key,bytes){let k0=key&M64,k1=(key>>64n)&M64;let v0=k0^0x736f6d65707
   let m=BigInt(n)<<56n;for(let j=n-1;j>=full;j--)m|=BigInt(bytes[j])<<BigInt(8*(j-full));v3^=m;rnd();rnd();v0^=m;v2^=0xffn;rnd();rnd();rnd();rnd();return (v0^v1^v2^v3)&M64}
 const bodyBytes=b=>{const a=[];for(let i=0;i<11;i++)a.push(Number((b>>BigInt(8*i))&255n));return a};
 const mac=(key,body)=>sip(key,bodyBytes(body))>>24n;
-function parse(key,cap){const body=cap&((1n<<88n)-1n);if((cap>>88n)!==mac(key,body))return null;const perms=Number((cap>>80n)&255n),exp=Number((cap>>72n)&255n),base=cap&((1n<<72n)-1n);
-  if(perms&~0x8f||exp>72||(base&((1n<<BigInt(exp))-1n)))return null;return{perms,exp,base}}
+function parse(key,cap){const body=cap&((1n<<88n)-1n);if((cap>>88n)!==mac(key,body))return null;const perms=Number((cap>>80n)&255n),exp=Number((cap>>72n)&255n),lenm1=Number((cap>>64n)&255n),base=cap&((1n<<64n)-1n);
+  const size=BigInt(lenm1+1)<<BigInt(exp);if(perms&~0x8f||exp>56||(base&((1n<<BigInt(exp))-1n))||base+size>(1n<<64n))return null;return{perms,exp,lenm1,base,size}}
 /* ---------- Terminal ---------- */
 mkWin("term","Terminal",24,20,560,420,'<path d="M4 6l5 5-5 5M12 18h8"/>',b=>{
   const names={gate:"gate",gateiso:"gateiso",gateswitch:"gateswitch",sigil:"sigil",sigilforge:"sigilforge",sigilraw:"sigilraw"};
@@ -157,14 +157,14 @@ mkWin("cap","Capability Inspector",60,300,600,470,'<rect x="5" y="10" width="14"
   const key=BigInt(DATA.inspector.key);let cap=BigInt(DATA.inspector.cap),flipped=new Set();const orig=cap;
   const info=el("p","mute","One Sigil is one 128-bit value. Click any bit to flip it; the MAC is recomputed in your browser with SipHash-2-4 and the key below.");info.style.cssText="margin:0 0 10px;font-size:12.5px";
   const grid=el("div","seg"),verdict=el("div","verdict"),tbl=el("div"),rst=el("button","","Reset");
-  const parts=[["MAC 40",88,40,"mac"],["perms 8",80,8,"perm"],["exp 8",72,8,"exp"],["base 72",0,72,"base"]];
+  const parts=[["MAC 40",88,40,"mac"],["perms 8",80,8,"perm"],["exp 8",72,8,"exp"],["length-1 8",64,8,"exp"],["base 64",0,64,"base"]];
   function draw(){grid.innerHTML="";for(const [lab,lo,n,cls] of parts){const f=el("div","field");f.append(el("label","",lab));const bits=el("div","bits");bits.style.gridTemplateColumns=`repeat(${Math.min(n,n>40?24:20)},15px)`;
       for(let k=n-1;k>=0;k--){const pos=lo+k,one=(cap>>BigInt(pos))&1n;const bt=el("button","bit "+cls+(one?" one":"")+(flipped.has(pos)?" flip":""),one?"1":"0");bt.title="bit "+pos;bt.onclick=()=>{cap^=1n<<BigInt(pos);flipped.has(pos)?flipped.delete(pos):flipped.add(pos);draw()};bits.append(bt)}f.append(bits);grid.append(f)}
     const body=cap&((1n<<88n)-1n),want=mac(key,body),have=cap>>88n,p=parse(key,cap);
     verdict.className="verdict "+(p?"ok":"bad");verdict.textContent=p?"Valid capability":"Rejected: hardware would raise CAPABILITY (cause 8)";
     const hx=v=>"0x"+v.toString(16);
     tbl.innerHTML=`<table><tr><th>MAC in the value</th><td class="mono">${hx(have)}</td></tr><tr><th>MAC the hardware computes</th><td class="mono">${hx(want)}</td></tr>`+
-      (p?`<tr><th>Region</th><td class="mono">${hx(p.base)} … +2^${p.exp} (${2**p.exp} bytes)</td></tr><tr><th>Permissions</th><td>${[p.perms&1&&"READ",p.perms&2&&"WRITE",p.perms&4&&"NARROW",p.perms&8&&"GATE",p.perms&0x80&&"SEALED"].filter(Boolean).join(" · ")||"none"}</td></tr>`:"")+
+      (p?`<tr><th>Region</th><td class="mono">${hx(p.base)} … +${p.size} bytes ((${p.lenm1}+1) × 2^${p.exp})</td></tr><tr><th>Permissions</th><td>${[p.perms&1&&"READ",p.perms&2&&"WRITE",p.perms&4&&"NARROW",p.perms&8&&"GATE",p.perms&0x80&&"SEALED"].filter(Boolean).join(" · ")||"none"}</td></tr>`:"")+
       `<tr><th>Key (kernel only)</th><td class="mono">${DATA.inspector.key}</td></tr></table>`}
   rst.onclick=()=>{cap=orig;flipped=new Set();draw()};
   const foot=el("p","mute",`In the emulator test, all 128 single-bit flips of this capability were rejected (${128-DATA.inspector.tampered_bits_accepted} of 128). A random 128-bit value passes with probability 2<sup>-40</sup>.`);foot.style.fontSize="12px";

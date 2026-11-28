@@ -59,8 +59,14 @@ def sigil_mac(key, body):
     return siphash24(key, body.to_bytes(11, "little")) >> 24
 
 
-def sigil_make(key, base, perms, exp):
-    body = (perms << 80) | (exp << 72) | base
+def sigil_size(shape):
+    """Region size in bytes for a shape field (exp << 8 | length-multiplier-minus-one): (lenm1 + 1) << exp."""
+    return ((shape & 0xFF) + 1) << (shape >> 8)
+
+
+def sigil_make(key, base, perms, shape):
+    """shape = exp << 8 | lenm1.  Body layout: perms [87:80], exp [79:72], lenm1 [71:64], base [63:0]."""
+    body = (perms << 80) | (shape << 64) | base
     return (sigil_mac(key, body) << 88) | body
 
 
@@ -69,10 +75,11 @@ def sigil_parse(key, cap):
     body = cap & SIGIL_BODY
     if (cap >> 88) != sigil_mac(key, body):
         return None
-    perms, exp, base = (cap >> 80) & 0xFF, (cap >> 72) & 0xFF, cap & ((1 << 72) - 1)
-    if perms & ~SIGIL_PERMS or exp > 72 or base & ((1 << exp) - 1):
+    perms, shape, base = (cap >> 80) & 0xFF, (cap >> 64) & 0xFFFF, cap & ((1 << 64) - 1)
+    exp = shape >> 8
+    if perms & ~SIGIL_PERMS or exp > 56 or base & ((1 << exp) - 1) or base + sigil_size(shape) > 1 << 64:
         return None
-    return base, perms, exp
+    return base, perms, shape
 
 
 class Trap(Exception):
@@ -270,18 +277,21 @@ class Machine:
             self._write(rd, bin(a).count("1"))
         elif name == "cmint":
             self._need_kernel()
-            if b >> 16 or (b & 0xFF) & ~SIGIL_PERMS or ((b >> 8) & 0xFF) > 72 or a >> 72 or a & ((1 << ((b >> 8) & 0xFF)) - 1):
+            shape = (((b >> 8) & 0xFF) << 8) | ((b >> 16) & 0xFF)
+            if b >> 24 or (b & 0xFF) & ~SIGIL_PERMS or (shape >> 8) > 56 or a >> 64 or a & ((1 << (shape >> 8)) - 1) or a + sigil_size(shape) > 1 << 64:
                 raise Trap(CAUSE_CAPABILITY, a)
-            self._write(rd, sigil_make(self.csr[11], a, b & 0xFF, (b >> 8) & 0xFF))
+            self._write(rd, sigil_make(self.csr[11], a, b & 0xFF, shape))
         elif name == "cnarrow":
             p = sigil_parse(self.csr[11], a)
             if p is None:
                 raise Trap(CAUSE_CAPABILITY, a)
-            base, perms, exp = p
-            np_, ne, off = b & 0xFF, (b >> 8) & 0xFF, b >> 16
-            if perms & SIGIL_SEALED or (np_ & ~perms) or not perms & 4 or ne > exp or off >= (1 << exp) or off & ((1 << ne) - 1) or off + (1 << ne) > (1 << exp):
+            base, perms, shape = p
+            np_, ne, off, nl = b & 0xFF, (b >> 8) & 0xFF, (b >> 16) & ((1 << 64) - 1), (b >> 80) & 0xFF   # nl: new length multiplier minus one
+            nshape = (ne << 8) | nl
+            if b >> 88 or perms & SIGIL_SEALED or (np_ & ~perms) or not perms & 4 or ne > (shape >> 8) or off & ((1 << ne) - 1) \
+                    or off + sigil_size(nshape) > sigil_size(shape):
                 raise Trap(CAUSE_CAPABILITY, a)
-            self._write(rd, sigil_make(self.csr[11], base + off, np_, ne))
+            self._write(rd, sigil_make(self.csr[11], base + off, np_, nshape))
         elif name == "cseal":
             p = sigil_parse(self.csr[11], a)
             if p is None:
@@ -289,7 +299,7 @@ class Machine:
             self._write(rd, sigil_make(self.csr[11], p[0], p[1] | SIGIL_SEALED, p[2]))
         elif name == "ccall":
             p = sigil_parse(self.csr[11], a)
-            if p is None or p[1] & (SIGIL_SEALED | SIGIL_GATE) != (SIGIL_SEALED | SIGIL_GATE) or p[2] < 4 or self.csr[13]:
+            if p is None or p[1] & (SIGIL_SEALED | SIGIL_GATE) != (SIGIL_SEALED | SIGIL_GATE) or p[0] & 15 or sigil_size(p[2]) < 16 or self.csr[13]:
                 raise Trap(CAUSE_CAPABILITY, a)
             self._write(rd, sigil_make(self.csr[11], p[0], p[1] & ~(SIGIL_SEALED | SIGIL_GATE), p[2]))
             self.csr[13] = nxt
@@ -297,7 +307,7 @@ class Machine:
         elif name == "ccalx":
             p = sigil_parse(self.csr[11], a)
             cs = self.csr[14]
-            if p is None or p[1] & (SIGIL_SEALED | SIGIL_GATE) != (SIGIL_SEALED | SIGIL_GATE) or p[2] < 4 or self.csr[13] \
+            if p is None or p[1] & (SIGIL_SEALED | SIGIL_GATE) != (SIGIL_SEALED | SIGIL_GATE) or p[0] & 15 or sigil_size(p[2]) < 16 or self.csr[13] \
                     or cs == 0 or cs & 15 or cs + 2048 > len(self.ram):
                 raise Trap(CAUSE_CAPABILITY, a)
             data = sigil_make(self.csr[11], p[0], p[1] & ~(SIGIL_SEALED | SIGIL_GATE), p[2])
@@ -333,7 +343,7 @@ class Machine:
             p = sigil_parse(self.csr[11], a)
             off = to_signed(simm)
             need = 1 if name in _CLOADS else 2
-            if p is None or p[1] & SIGIL_SEALED or not p[1] & need or off < 0 or off + size > (1 << p[2]):
+            if p is None or p[1] & SIGIL_SEALED or not p[1] & need or off < 0 or off + size > sigil_size(p[2]):
                 raise Trap(CAUSE_CAPABILITY, a)
             if name in _CLOADS:
                 self._write(rd, self._load(p[0] + off, size))

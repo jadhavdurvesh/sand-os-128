@@ -7,11 +7,11 @@
 A **Sigil** is a complete memory capability that fits in *one* 128-bit register or *one* 128-bit memory word, with **no tag memory**. Unforgeability does not come from a hidden tag bit (as in CHERI) but from a 40-bit keyed MAC stored inside the capability and checked by hardware on every use. Because nothing lives outside the 128 bits, a Sigil can be copied by any ordinary instruction, stored in any memory, sent through the 128-bit mailbox, or serialised, without special tagged-memory support.
 
 ```
- 127            88 87      80 79     72 71                         0
+ 127            88 87      80 79     72 71     64 63                       0
  +----------------+----------+---------+---------------------------+
- |   MAC (40)     | perms(8) | exp (8) |        base (72)          |
+ |   MAC (40)     | perms(8) | exp (8) | lenm1 (8) |      base (64)       |
  +----------------+----------+---------+---------------------------+
- perms: bit0 READ, bit1 WRITE, bit2 NARROW   region = [base, base + 2^exp), base aligned to 2^exp, exp <= 72
+ perms: bit0 READ, bit1 WRITE, bit2 NARROW   region = [base, base + (lenm1+1) << exp), base aligned to 2^exp, exp <= 56, base + size <= 2^64
  MAC  : top 40 bits of F(ckey, bits[87:0])
 ```
 
@@ -19,10 +19,10 @@ A **Sigil** is a complete memory capability that fits in *one* 128-bit register 
 
 | Item | Definition |
 |---|---|
-| `cmint rd, ra, rb` | **Kernel only.** `ra` = base, `rb` = perms \| exp<<8. Produces a Sigil. Misaligned or out-of-range arguments trap `CAPABILITY`. |
-| `cnarrow rd, ra, rb` | `rb` = perms \| exp<<8 \| offset<<16. New perms must be a subset, region must be inside the old one and aligned; the source needs `NARROW`. Any violation, or an invalid source, traps. Monotonic: authority never grows. |
+| `cmint rd, ra, rb` | **Kernel only.** `ra` = base, `rb` = perms \| exp<<8 \| lenm1<<16. Produces a Sigil. Misaligned or out-of-range arguments trap `CAPABILITY`. |
+| `cnarrow rd, ra, rb` | `rb` = perms \| exp<<8 \| offset<<16 (64 bits) \| newlenm1<<80. New perms must be a subset, region must be inside the old one and aligned; the source needs `NARROW`. Any violation, or an invalid source, traps. Monotonic: authority never grows. |
 | `cinfo rd, ra` | Never traps. `rd` = `1<<127 \| bits[87:0]` if the MAC verifies, otherwise 0. Lets software read a capability's base/size/perms and test validity safely. |
-| `clb`/`clq rd, [ra + imm]`, `csb`/`csq [ra + imm], rb` | Access through Sigil `ra`. Needs READ (loads) or WRITE (stores), `0 <= imm` and `imm + size <= 2^exp`. The effective address is `base + imm` and the normal checks (alignment, aperture, RAM) still apply. |
+| `clb`/`clq rd, [ra + imm]`, `csb`/`csq [ra + imm], rb` | Access through Sigil `ra`. Needs READ (loads) or WRITE (stores), `0 <= imm` and `imm + size <= (lenm1+1) << exp`. The effective address is `base + imm` and the normal checks (alignment, aperture, RAM) still apply. |
 | CSR 11 `ckey` | 128-bit MAC key, kernel read/write. Changing it revokes every outstanding Sigil. |
 | CSR 12 `cmode` | Non-zero = **capability mode** for user code: every raw load/store traps `CAPABILITY`; only `c*` accesses reach memory. |
 | Cause 8 `CAPABILITY` | `tval` = the offending capability (or the raw effective address in capability mode). |
@@ -31,7 +31,7 @@ A **Sigil** is a complete memory capability that fits in *one* 128-bit register 
 
 ## 3. Kernelloom integration (syscalls 10-12)
 
-`capget(base, exp, perms)` mints a Sigil for a region inside the caller's aperture (else -1). `cmode()` puts the calling task into capability mode for good, and its spawned threads inherit it. `cwrite(cap, len)` prints through a READ Sigil instead of a raw pointer. A capability can be passed as a spawn argument or a mailbox message: a whole capability is one 128-bit value. `ckey` is set at boot from a constant so every run is reproducible; a real machine would need an entropy source.
+`capget(base, exp | lenm1<<8, perms)` mints a Sigil for a region inside the caller's aperture (else -1). `cmode()` puts the calling task into capability mode for good, and its spawned threads inherit it. `cwrite(cap, len)` prints through a READ Sigil instead of a raw pointer. A capability can be passed as a spawn argument or a mailbox message: a whole capability is one 128-bit value. `ckey` is set at boot from a constant so every run is reproducible; a real machine would need an entropy source.
 
 ## 4. Security properties and their evidence
 
@@ -54,7 +54,7 @@ A **Sigil** is a complete memory capability that fits in *one* 128-bit register 
 
 ## 6. Limits
 
-SipHash is a vetted short-input PRF, but truncating it to 40 bits is our design choice and its hardware latency is unstudied; 40-bit tag means about 2^39 expected online guesses, so the kernel must punish a failed use (Kernelloom halts); constant boot key; no per-object revocation; power-of-two regions waste memory; the MAC check latency is unmodelled; no sealed/entry (call-gate) capabilities; no paging interaction defined.
+SipHash is a vetted short-input PRF, but truncating it to 40 bits is our design choice and its hardware latency is unstudied; 40-bit tag means about 2^39 expected online guesses, so the kernel must punish a failed use (Kernelloom halts); constant boot key; no per-object revocation; regions are `(lenm1+1) << exp` bytes (byte-exact up to 256, within 1/128 above), so alignment is only `2^exp`; capability-addressable memory is 2^64 bytes; the MAC check latency is unmodelled; no sealed/entry (call-gate) capabilities; no paging interaction defined.
 
 
 ## Sealed capabilities
@@ -83,3 +83,7 @@ Limits: calls do not nest (a second `ccall` while `clink` is set traps); the reg
 ![gate](screenshots/gate.png)
 ![isolated](screenshots/gateiso.png)
 ![cost](screenshots/gate-cost.png)
+
+## Length multiplier (layout change driven by measurement)
+
+The first layout had power-of-two regions only (as in guarded pointers) and a 72-bit base. `tools/frag.py` traced real programs and showed 20-96% internal fragmentation and 60-283% peak-footprint overhead for that rounding (docs/20). The layout now uses a 64-bit base and an 8-bit length multiplier, so a region is `(lenm1+1) << exp` bytes: byte-exact up to 256 bytes, within 1/128 above. On the same traces the implemented rounding wastes 0.08-0.75%. Old encodings (multiplier 1) are unchanged. Cost: capability-addressed memory is 2^64 bytes, not the machine's 2^128. The fuzzer covers multipliers up to 4 on mint and up to 3 on narrow; the kernel `capget` takes `exp | lenm1<<8`.

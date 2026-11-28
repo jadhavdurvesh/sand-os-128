@@ -249,6 +249,23 @@ class Sigil(unittest.TestCase):
         bad=[(0x10000,17,1),(0x10000,6,16),(0xF000,6,1),(0x10010,6,1),(0x1FFC0,7,1)]      # too big, bad perms, below aperture, misaligned, past the end
         src=pre+"".join(sysc(10,*a)+"li v9, -1\nbne v1, v9, wrong\n" for a in bad)+sysc(10,0x10000,6,7)+"cinfo v5, v1\nbeq v5, v0, wrong\nli v2, 0\nli v1, 2\nsys 0\nwrong:\nli v2, 1\nli v1, 2\nsys 0\n"
         m=Machine(1<<20);m.load(asm.assemble(read("kernel/kernelloom.s")));m.load(asm.assemble(src),set_entry=False);m.run(2_000_000);self.assertEqual((m.stop_reason,m.exit_code),("halt",0))
+    def test_length_multiplier_gives_tight_bounds(self):
+        K="li v1, 0x77\ncsrw ckey, v1\n"
+        mint=K+"li v2, 0x9000\nli v3, %d\ncmint v4, v2, v3\n"%(7|4<<8|24<<16)               # 400 bytes = 25 << 4, base aligned only to 16
+        m=run(mint+"clq v6, [v4 + 384]\ncinfo v7, v4\nhalt")
+        self.assertEqual(m.v[7],(1<<127)|(7<<80)|(4<<72)|(24<<64)|0x9000)
+        self.assertEqual(trap(mint+"clq v6, [v4 + 400]")[0],isa.CAUSE_CAPABILITY)
+        self.assertEqual(trap(mint+"clq v6, [v4 + 392]")[0],isa.CAUSE_CAPABILITY)           # 392 + 16 > 400
+        narrow=mint+"li v5, %d\ncnarrow v8, v4, v5\n"%(3|4<<8|48<<16|1<<80)                  # 32 bytes at offset 48
+        self.assertEqual(run(narrow+"clq v6, [v8 + 16]\nhalt").stop_reason,"halt")
+        self.assertEqual(trap(narrow+"clq v6, [v8 + 32]")[0],isa.CAUSE_CAPABILITY)
+        self.assertEqual(trap(mint+"li v5, %d\ncnarrow v8, v4, v5"%(3|4<<8|48<<16|25<<80))[0],isa.CAUSE_CAPABILITY)   # child would exceed the parent
+        self.assertEqual(trap(K+"li v2, %d\nli v3, %d\ncmint v4, v2, v3"%((1<<64)-16,3|4<<8|1<<16))[0],isa.CAUSE_CAPABILITY)   # base + size wraps past 2^64
+    def test_kernel_capget_with_length_multiplier(self):
+        pre=".org 0x10000\n_start:\nli sp, 0x1F000\n"
+        def sysc(n,*args):return "".join(f"li v{i+2}, {a}\n" for i,a in enumerate(args))+f"li v1, {n}\nsys 0\n"
+        src=pre+sysc(10,0x10800,4|24<<8,3)+"mv v20, v1\nclq v6, [v20 + 384]\nli v7, 400\nli v8, 1\nsys 1\n".replace("sys 1\n","")+sysc(10,0x1FFF0,4|1<<8,3)+"li v9, -1\nbne v1, v9, wrong\nli v2, 0\nli v1, 2\nsys 0\nwrong:\nli v2, 1\nli v1, 2\nsys 0\n"
+        m=Machine(1<<20);m.load(asm.assemble(read("kernel/kernelloom.s")));m.load(asm.assemble(src),set_entry=False);m.run(2_000_000);self.assertEqual((m.stop_reason,m.exit_code),("halt",0))
     def test_cap_cause_name(self):self.assertEqual(isa.CAUSES[8],"CAPABILITY")
 class Trace(unittest.TestCase):
     def test_trace_width(self):
@@ -266,6 +283,7 @@ class Fragmentation(unittest.TestCase):
         sys.path.insert(0,os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),"tools"))
         import frag
         self.assertEqual((frag.round_m(100,0),frag.round_m(100,8),frag.round_m(5,0),frag.round_m(1000,2)),(128,112,16,1024))
+        self.assertEqual((frag.sigil_m_round(100),frag.sigil_m_round(256),frag.sigil_m_round(257),frag.sigil_m_round(100000)),(100,256,258,100352))
         b=frag.Buddy();a1,k1=b.alloc(100);a2,k2=b.alloc(100);self.assertEqual((k1,k2,a1%128,a2%128),(7,7,0,0))
         b.release(a1,k1);b.release(a2,k2);self.assertEqual(b.alloc(256)[0]%256,0)
 if __name__=="__main__":unittest.main()
