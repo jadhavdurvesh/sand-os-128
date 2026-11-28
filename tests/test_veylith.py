@@ -321,6 +321,19 @@ class CycleModel(unittest.TestCase):
     def test_dirty_mask_tracks_writes(self):
         m=Machine();m.load(asm.assemble("li v3, 1\naddi v4, v3, 1\nhalt"));m.run(10)
         self.assertEqual(m.dirty&0b11000,0b11000)
+class Compiler(unittest.TestCase):
+    def test_compiled_programs_match_python_on_both_back_ends(self):
+        import sys
+        sys.path.insert(0,os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),"tools"))
+        import compiled_study as cs
+        for name,(src,arrays) in cs.PROGRAMS.items():
+            for cap in (False,True):
+                m,comp,_,_=cs.one(src,arrays,cap); cs.check(m,comp,src,arrays)
+    def test_compiler_rejects_unsupported_syntax(self):
+        import sys
+        sys.path.insert(0,os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),"tools"))
+        import vcc
+        with self.assertRaises(NotImplementedError): vcc.compile_program("x = f(1)\n",{},False)
 class Fragmentation(unittest.TestCase):
     def test_rounding_and_buddy(self):
         import sys

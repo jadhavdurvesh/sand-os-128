@@ -1,0 +1,324 @@
+{
+ "rows": [
+  {
+   "workload": "sieve (n=1500)",
+   "asm_lines": 56,
+   "glyphs_raw": 32209,
+   "glyphs_cap": 28479,
+   "cap_uses": 3732,
+   "macs_flags": 0,
+   "macs_noflags": 3732,
+   "data_accesses": 3732,
+   "footprint_bytes": 23968,
+   "tag_misses": {
+    "1": 38,
+    "2": 36,
+    "4": 3,
+    "16": 3,
+    "64": 3
+   },
+   "quanta": 10,
+   "dirty_mean": 4.3,
+   "dirty_max": 7
+  },
+  {
+   "workload": "bubble sort (48)",
+   "asm_lines": 47,
+   "glyphs_raw": 21058,
+   "glyphs_cap": 17622,
+   "cap_uses": 3438,
+   "macs_flags": 0,
+   "macs_noflags": 3438,
+   "data_accesses": 3438,
+   "footprint_bytes": 768,
+   "tag_misses": {
+    "1": 1,
+    "2": 1,
+    "4": 1,
+    "16": 1,
+    "64": 1
+   },
+   "quanta": 7,
+   "dirty_mean": 6.6,
+   "dirty_max": 10
+  },
+  {
+   "workload": "matrix multiply (6x6)",
+   "asm_lines": 59,
+   "glyphs_raw": 4781,
+   "glyphs_cap": 4319,
+   "cap_uses": 468,
+   "macs_flags": 0,
+   "macs_noflags": 468,
+   "data_accesses": 468,
+   "footprint_bytes": 1728,
+   "tag_misses": {
+    "1": 1,
+    "2": 1,
+    "4": 1,
+    "16": 1,
+    "64": 1
+   },
+   "quanta": 1,
+   "dirty_mean": 13.0,
+   "dirty_max": 13
+  },
+  {
+   "workload": "histogram (1024 -> 16 bins)",
+   "asm_lines": 28,
+   "glyphs_raw": 17418,
+   "glyphs_cap": 14350,
+   "cap_uses": 3072,
+   "macs_flags": 0,
+   "macs_noflags": 3072,
+   "data_accesses": 3072,
+   "footprint_bytes": 16640,
+   "tag_misses": {
+    "1": 2048,
+    "2": 3,
+    "4": 3,
+    "16": 3,
+    "64": 3
+   },
+   "quanta": 5,
+   "dirty_mean": 4.8,
+   "dirty_max": 8
+  },
+  {
+   "workload": "binary search (200 lookups)",
+   "asm_lines": 57,
+   "glyphs_raw": 23511,
+   "glyphs_cap": 21514,
+   "cap_uses": 2001,
+   "macs_flags": 0,
+   "macs_noflags": 2001,
+   "data_accesses": 2001,
+   "footprint_bytes": 6976,
+   "tag_misses": {
+    "1": 1,
+    "2": 1,
+    "4": 1,
+    "16": 1,
+    "64": 1
+   },
+   "quanta": 7,
+   "dirty_mean": 8.3,
+   "dirty_max": 12
+  },
+  {
+   "workload": "knapsack DP (30 items, cap 120)",
+   "asm_lines": 54,
+   "glyphs_raw": 54850,
+   "glyphs_cap": 46722,
+   "cap_uses": 8134,
+   "macs_flags": 0,
+   "macs_noflags": 8134,
+   "data_accesses": 8134,
+   "footprint_bytes": 2896,
+   "tag_misses": {
+    "1": 1,
+    "2": 1,
+    "4": 1,
+    "16": 1,
+    "64": 1
+   },
+   "quanta": 18,
+   "dirty_mean": 6.3,
+   "dirty_max": 11
+  }
+ ],
+ "model": [
+  {
+   "workload": "sieve (n=1500)",
+   "sigil_flags": {
+    "1": 0.0,
+    "2": 0.0,
+    "4": 0.0,
+    "8": 0.0,
+    "12": 0.0
+   },
+   "sigil_noflags": {
+    "1": 13.1,
+    "2": 26.21,
+    "4": 52.42,
+    "8": 104.84,
+    "12": 157.25
+   },
+   "tagcache_4lines": {
+    "10": 0.11,
+    "30": 0.32,
+    "100": 1.05
+   },
+   "tagcache_64lines": {
+    "10": 0.11,
+    "30": 0.32,
+    "100": 1.05
+   },
+   "tagcache_1line": {
+    "10": 1.33,
+    "30": 4.0,
+    "100": 13.34
+   }
+  },
+  {
+   "workload": "bubble sort (48)",
+   "sigil_flags": {
+    "1": 0.0,
+    "2": 0.0,
+    "4": 0.0,
+    "8": 0.0,
+    "12": 0.0
+   },
+   "sigil_noflags": {
+    "1": 19.51,
+    "2": 39.02,
+    "4": 78.04,
+    "8": 156.08,
+    "12": 234.12
+   },
+   "tagcache_4lines": {
+    "10": 0.06,
+    "30": 0.17,
+    "100": 0.57
+   },
+   "tagcache_64lines": {
+    "10": 0.06,
+    "30": 0.17,
+    "100": 0.57
+   },
+   "tagcache_1line": {
+    "10": 0.06,
+    "30": 0.17,
+    "100": 0.57
+   }
+  },
+  {
+   "workload": "matrix multiply (6x6)",
+   "sigil_flags": {
+    "1": 0.0,
+    "2": 0.0,
+    "4": 0.0,
+    "8": 0.0,
+    "12": 0.0
+   },
+   "sigil_noflags": {
+    "1": 10.84,
+    "2": 21.67,
+    "4": 43.34,
+    "8": 86.69,
+    "12": 130.03
+   },
+   "tagcache_4lines": {
+    "10": 0.23,
+    "30": 0.69,
+    "100": 2.32
+   },
+   "tagcache_64lines": {
+    "10": 0.23,
+    "30": 0.69,
+    "100": 2.32
+   },
+   "tagcache_1line": {
+    "10": 0.23,
+    "30": 0.69,
+    "100": 2.32
+   }
+  },
+  {
+   "workload": "histogram (1024 -> 16 bins)",
+   "sigil_flags": {
+    "1": 0.0,
+    "2": 0.0,
+    "4": 0.0,
+    "8": 0.0,
+    "12": 0.0
+   },
+   "sigil_noflags": {
+    "1": 21.41,
+    "2": 42.82,
+    "4": 85.63,
+    "8": 171.26,
+    "12": 256.89
+   },
+   "tagcache_4lines": {
+    "10": 0.21,
+    "30": 0.63,
+    "100": 2.09
+   },
+   "tagcache_64lines": {
+    "10": 0.21,
+    "30": 0.63,
+    "100": 2.09
+   },
+   "tagcache_1line": {
+    "10": 142.72,
+    "30": 428.15,
+    "100": 1427.18
+   }
+  },
+  {
+   "workload": "binary search (200 lookups)",
+   "sigil_flags": {
+    "1": 0.0,
+    "2": 0.0,
+    "4": 0.0,
+    "8": 0.0,
+    "12": 0.0
+   },
+   "sigil_noflags": {
+    "1": 9.3,
+    "2": 18.6,
+    "4": 37.2,
+    "8": 74.41,
+    "12": 111.61
+   },
+   "tagcache_4lines": {
+    "10": 0.05,
+    "30": 0.14,
+    "100": 0.46
+   },
+   "tagcache_64lines": {
+    "10": 0.05,
+    "30": 0.14,
+    "100": 0.46
+   },
+   "tagcache_1line": {
+    "10": 0.05,
+    "30": 0.14,
+    "100": 0.46
+   }
+  },
+  {
+   "workload": "knapsack DP (30 items, cap 120)",
+   "sigil_flags": {
+    "1": 0.0,
+    "2": 0.0,
+    "4": 0.0,
+    "8": 0.0,
+    "12": 0.0
+   },
+   "sigil_noflags": {
+    "1": 17.41,
+    "2": 34.82,
+    "4": 69.64,
+    "8": 139.27,
+    "12": 208.91
+   },
+   "tagcache_4lines": {
+    "10": 0.02,
+    "30": 0.06,
+    "100": 0.21
+   },
+   "tagcache_64lines": {
+    "10": 0.02,
+    "30": 0.06,
+    "100": 0.21
+   },
+   "tagcache_1line": {
+    "10": 0.02,
+    "30": 0.06,
+    "100": 0.21
+   }
+  }
+ ]
+}
