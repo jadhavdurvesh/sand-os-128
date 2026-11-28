@@ -1,0 +1,82 @@
+{
+ "python_json_re_decimal": {
+  "allocations": 1429975,
+  "bytes_requested": 479462125,
+  "median_size": 46,
+  "internal_fragmentation_percent_by_mantissa_bits": {
+   "0": 78.02,
+   "1": 35.72,
+   "2": 15.49,
+   "4": 5.33,
+   "6": 1.59,
+   "8": 1.56
+  },
+  "peak_live_bytes": 27483718,
+  "buddy_peak_span_bytes": 44050880,
+  "buddy_peak_overhead_percent": 60.3
+ },
+ "gcc_compile_veylith_vm": {
+  "allocations": 220101,
+  "bytes_requested": 180203903,
+  "median_size": 76,
+  "internal_fragmentation_percent_by_mantissa_bits": {
+   "0": 20.11,
+   "1": 9.38,
+   "2": 4.37,
+   "4": 1.81,
+   "6": 0.81,
+   "8": 0.57
+  },
+  "peak_live_bytes": 7316904,
+  "buddy_peak_span_bytes": 14680064,
+  "buddy_peak_overhead_percent": 100.6
+ },
+ "tar_gzip_repo": {
+  "allocations": 5900,
+  "bytes_requested": 6591999,
+  "median_size": 22,
+  "internal_fragmentation_percent_by_mantissa_bits": {
+   "0": 96.18,
+   "1": 48.28,
+   "2": 24.38,
+   "4": 6.5,
+   "6": 2.04,
+   "8": 0.92
+  },
+  "peak_live_bytes": 374601,
+  "buddy_peak_span_bytes": 786432,
+  "buddy_peak_overhead_percent": 109.9
+ },
+ "sort_and_uniq": {
+  "allocations": 2692,
+  "bytes_requested": 18134413,
+  "median_size": 32,
+  "internal_fragmentation_percent_by_mantissa_bits": {
+   "0": 94.26,
+   "1": 46.43,
+   "2": 22.52,
+   "4": 4.6,
+   "6": 1.57,
+   "8": 0.46
+  },
+  "peak_live_bytes": 17529872,
+  "buddy_peak_span_bytes": 67117056,
+  "buddy_peak_overhead_percent": 282.9
+ },
+ "git_log_and_diff": {
+  "allocations": 18031,
+  "bytes_requested": 79095409,
+  "median_size": 114,
+  "internal_fragmentation_percent_by_mantissa_bits": {
+   "0": 51.68,
+   "1": 17.9,
+   "2": 14.58,
+   "4": 2.21,
+   "6": 0.87,
+   "8": 0.13
+  },
+  "peak_live_bytes": 3468115,
+  "buddy_peak_span_bytes": 6291456,
+  "buddy_peak_overhead_percent": 81.4
+ }
+}

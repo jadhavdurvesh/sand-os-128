@@ -260,4 +260,12 @@ class Workload(unittest.TestCase):
         import workloads
         a=workloads.run(workloads.build(False,3),3)[1];b=workloads.run(workloads.build(True,3),3)[1]
         self.assertEqual(a,sorted(a));self.assertEqual(a,b);self.assertEqual(len(workloads.PAIRS),63)
+class Fragmentation(unittest.TestCase):
+    def test_rounding_and_buddy(self):
+        import sys
+        sys.path.insert(0,os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),"tools"))
+        import frag
+        self.assertEqual((frag.round_m(100,0),frag.round_m(100,8),frag.round_m(5,0),frag.round_m(1000,2)),(128,112,16,1024))
+        b=frag.Buddy();a1,k1=b.alloc(100);a2,k2=b.alloc(100);self.assertEqual((k1,k2,a1%128,a2%128),(7,7,0,0))
+        b.release(a1,k1);b.release(a2,k2);self.assertEqual(b.alloc(256)[0]%256,0)
 if __name__=="__main__":unittest.main()

@@ -34,7 +34,7 @@ A 16-element sorting network (63 compare-exchanges, constant indices) sorts corr
 |---|---|
 | Reproducible artifact | Done |
 | Honest limits stated | Done |
-| Literature review of in-pointer crypto capabilities | Started (this document); C3 and several others still to read in full |
+| Literature review of in-pointer crypto capabilities | Started (see docs/20); C3 and several others still to read in full |
 | Real baseline on one microarchitecture (CHERI-style vs Sigil) | **Missing.** Our Glyph counts are not comparable to CHERI's cycle counts |
 | Threat model and forgery analysis | Paper has a basic one; no attack experiments, no key management, no side channels |
 | Realistic workloads | One micro-workload; no compiler, no indexed capability access |
