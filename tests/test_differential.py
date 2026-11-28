@@ -39,7 +39,7 @@ def program(seed, length=220):
     L.append(f"li v16, {MEM}")
     L += ["la v14, trapped", "csrw tvec, v14", "li v18, 0", f"li v13, {rng.getrandbits(128)}", "csrw ckey, v13"]     # trap handler counts faults and skips them
     for cr, (base, perms, exp) in zip(CAPS, [(MEM, 7, 8), (MEM + 64, 7, 6), (MEM, 1, 8), (MEM + 128, 6, 7)]):
-        L += [f"li v13, {base}", f"li v14, {perms | exp << 8}", f"cmint v{cr}, v13, v14"]
+        L += [f"li v13, {base}", f"li v14, {perms | exp << 8 | rng.randrange(0, 4) << 16}", f"cmint v{cr}, v13, v14"]    # length multiplier 1..4
     n = 0
     while n < length:
         k = rng.random()
@@ -47,7 +47,7 @@ def program(seed, length=220):
             cr = lambda: f"v{rng.choice(CAPS)}"
             j = rng.random()
             if j < 0.3:
-                rb = rng.randrange(8) | rng.randrange(0, 10) << 8 | rng.randrange(0, 256, 1 << rng.randrange(0, 6)) << 16
+                rb = rng.randrange(8) | rng.randrange(0, 10) << 8 | rng.randrange(0, 256, 1 << rng.randrange(0, 6)) << 16 | rng.randrange(0, 3) << 80
                 L += [f"li v13, {rb}", f"cnarrow {rng.choice([cr(), reg()])}, {cr()}, v13"]
             elif j < 0.37:
                 L.append(f"{rng.choice(['cseal', 'cunseal'])} {rng.choice([cr(), reg()])}, {rng.choice([cr(), reg()])}")

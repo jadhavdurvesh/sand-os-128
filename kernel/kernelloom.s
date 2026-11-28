@@ -431,22 +431,28 @@ sys_getcycles:
 ;  10 capget(base, exp, perms)  -> a capability for [base, base + 2^exp) inside the aperture (perms: 1 READ, 2 WRITE, 4 NARROW), or -1
 ;  11 cmode()                   -> 0; the task (and the threads it spawns) can from now on reach memory only through capabilities
 ;  12 cwrite(cap, len)          -> like write(), but the buffer is named by a READ capability instead of a raw pointer
-sys_capget:
+sys_capget:                         ; v2 = base, v3 = exp | lenm1 << 8, v4 = perms; region = (lenm1 + 1) << exp bytes
+    shri v21, v3, 8                 ; length multiplier minus one
+    andi v3, v3, 255                ; exponent
     li   v17, 16
-    bltu v17, v3, task_bad          ; region larger than the 64 KiB aperture
+    bltu v17, v3, task_bad          ; alignment unit larger than the 64 KiB aperture
     li   v17, 15
     bltu v17, v4, task_bad          ; perms must be within READ|WRITE|NARROW|GATE
     li   v17, USER_BASE
     bltu v2, v17, task_bad
-    li   v18, 1
-    shl  v18, v18, v3               ; region size
+    addi v18, v21, 1
+    shl  v18, v18, v3               ; region size = (lenm1 + 1) << exp
     add  v19, v2, v18
     li   v17, USER_BASE + USER_SIZE
     bltu v17, v19, task_bad         ; region must lie inside the aperture
-    addi v19, v18, -1
+    li   v19, 1
+    shl  v19, v19, v3
+    addi v19, v19, -1
     and  v19, v2, v19
-    bne  v19, v0, task_bad          ; and be naturally aligned
+    bne  v19, v0, task_bad          ; and be aligned to 2^exp
     shli v20, v3, 8
+    shli v22, v21, 16
+    or   v20, v20, v22
     or   v20, v20, v4
     cmint v16, v2, v20
     jmp  syscall_return

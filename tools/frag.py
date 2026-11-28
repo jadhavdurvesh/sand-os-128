@@ -20,6 +20,12 @@ def round_m(s, m):
     e = s.bit_length() - 1
     step = 1 << max(e - m, 4)               # alignment unit: 2^(e-m), never below the 16-byte granule
     return (s + step - 1) // step * step
+def sigil_m_round(s):
+    """Implemented layout: region = (lenm1 + 1) << exp with lenm1 < 256; smallest exp that fits, byte-exact up to 256 bytes."""
+    s = max(s, 1)
+    exp = 0
+    while -(-s // (1 << exp)) > 256: exp += 1
+    return -(-s // (1 << exp)) << exp
 class Buddy:
     def __init__(self): self.free = {}; self.top = 0; self.live = {}; self.cur = 0; self.peak_span = 0
     def alloc(self, size):
@@ -42,6 +48,7 @@ def analyse(events):
     sizes = [s for op, p, s in events if op == b"m" and s > 0]
     res = {"allocations": len(sizes), "bytes_requested": sum(sizes), "median_size": sorted(sizes)[len(sizes) // 2] if sizes else 0}
     res["internal_fragmentation_percent_by_mantissa_bits"] = {str(m): round(100 * (sum(round_m(s, m) for s in sizes) - sum(sizes)) / sum(sizes), 2) for m in (0, 1, 2, 4, 6, 8)}
+    res["implemented_length_multiplier_internal_fragmentation_percent"] = round(100 * (sum(sigil_m_round(s) for s in sizes) - sum(sizes)) / sum(sizes), 3)
     b = Buddy(); live = {}; cur = 0; peak_live = 0
     for op, p, s in events:
         if op == b"m" and s > 0:

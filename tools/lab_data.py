@@ -78,10 +78,10 @@ def examples():
                        "source": open(os.path.join(root, f"examples/{ex}.s")).read()}
     return out
 def inspector():
-    cap = sigil_make(0x1234567890ABCDEF1234567890ABCDEF, 0x9000, 7, 7)
+    cap = sigil_make(0x1234567890ABCDEF1234567890ABCDEF, 0x9000, 7, (4 << 8) | 24)
     key = 0x1234567890ABCDEF1234567890ABCDEF
     flips = [sigil_parse(key, cap ^ (1 << b)) is not None for b in range(128)]
-    return {"key": hex(key), "cap": hex(cap), "region": [0x9000, 128], "valid": sigil_parse(key, cap) is not None, "tampered_bits_accepted": sum(flips)}
+    return {"key": hex(key), "cap": hex(cap), "region": [0x9000, 400], "valid": sigil_parse(key, cap) is not None, "tampered_bits_accepted": sum(flips)}
 def main():
     ev = json.load(open(os.path.join(root, "docs/paper/evidence.json")))
     data = {"scenarios": {"isolated": scenario("ccalx", "cretx", "Isolated gate call (ccalx / cretx)"), "shared": scenario("ccall", "cretn", "Shared-register gate call (ccall / cretn)")},

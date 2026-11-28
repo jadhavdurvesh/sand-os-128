@@ -1,6 +1,6 @@
 {
   "unit": {
-    "tests": 67,
+    "tests": 70,
     "passed": true,
     "skipped": 0
   },
@@ -8,7 +8,7 @@
     "programs": 3000,
     "passed": true,
     "divergences": 0,
-    "seconds": 154.5,
+    "seconds": 128.3,
     "machines": "Python big-integer reference vs C unsigned __int128",
     "instructions_per_program": "about 634 retired Glyphs on average"
   },
@@ -61,7 +61,7 @@
       "glyphs_per_yield_context_switch": 877.5
     },
     "images": {
-      "kernel_image_bytes": 21052,
+      "kernel_image_bytes": 21148,
       "kernel_syscalls": 12,
       "veylith_opcodes": 72
     }

@@ -18,7 +18,7 @@ Written after a literature check in November 2026. It is not a complete survey. 
 **Not novel, do not claim:** tag-free authenticated pointers; capabilities with power-of-two bounds; sealing; a hardware domain-crossing call; register clearing on crossing.
 
 **Defensible, narrower claims:**
-1. A uniformly 128-bit machine lets an in-pointer capability carry a full 72-bit base, exponent, permissions and a 40-bit MAC with no address bits taken or encrypted; prior in-pointer schemes live inside 64 bits and give something up (shorter MAC, truncated address, no permissions).
+1. A uniformly 128-bit machine lets an in-pointer capability carry a 64-bit base, exponent, length multiplier, permissions and a 40-bit MAC with nothing truncated or encrypted (capability space is 2^64, not 2^128); prior in-pointer schemes live inside 64 bits and give something up (shorter MAC, truncated address, no permissions).
 2. A reproducible platform: two independent implementations, differential fuzzing, kernel, examples; all numbers regenerate from the repository.
 3. One concrete gate design point (single-instruction call, per-task return link, optional hardware-spilled isolation) with its costs measured in the model, including the limits (no nesting; 254 words of register traffic per isolated call).
 
