@@ -214,7 +214,7 @@ def study(quantum=3000):
     return rows
 
 
-def model(rows, Ls=(1, 2, 4, 8, 12), Ms=(10, 30, 100)):
+def model(rows, Ls=(1, 2, 4, 8, 12, 16), Ms=(10, 30, 100)):
     """Percent slowdown relative to the same capability code with free checks (L = 0, no tag cost)."""
     out = []
     for r in rows:
